@@ -16,6 +16,7 @@
  */
 package ingestion;
 
+import ingestion.model.AggregateValueTuple;
 import ingestion.model.AirQualityReading;
 import ingestion.serdes.JsonPOJODeserializer;
 import ingestion.serdes.JsonPOJOSerializer;
@@ -25,11 +26,13 @@ import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.serialization.Serializer;
+import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.*;
+import org.apache.kafka.streams.state.KeyValueStore;
 
 import java.util.Calendar;
 import java.util.Date;
@@ -93,6 +96,8 @@ public class CotIngestStream {
 
         final StreamsBuilder builder = new StreamsBuilder();
 
+        // Set up Serializers and Deserializers
+
         Map<String, Object> serdeProps = new HashMap<>();
         final Serializer<AirQualityReading> aQSerializer = new JsonPOJOSerializer<>();
         serdeProps.put("JsonPOJOClass", AirQualityReading.class);
@@ -103,6 +108,19 @@ public class CotIngestStream {
         aQDeserializer.configure(serdeProps, false);
 
         final Serde<AirQualityReading> aQSerde = Serdes.serdeFrom(aQSerializer, aQDeserializer);
+
+        serdeProps = new HashMap<>();
+        final Serializer<AggregateValueTuple> aggSerializer = new JsonPOJOSerializer<>();
+        serdeProps.put("JsonPOJOClass", AggregateValueTuple.class);
+        aggSerializer.configure(serdeProps, false);
+
+        final Deserializer<AggregateValueTuple> aggDeserializer = new JsonPOJODeserializer<>();
+        serdeProps.put("JsonPOJOClass", AggregateValueTuple.class);
+        aggDeserializer.configure(serdeProps, false);
+
+        final Serde<AggregateValueTuple> aggSerde = Serdes.serdeFrom(aggSerializer, aggDeserializer);
+
+        // Set streaming topology and transformations
 
         KStream<byte[], AirQualityReading> source = builder.stream("cot.airquality", Consumed.with(Serdes.ByteArray(), aQSerde));
         final String finalMetricId = aQMetricId;
@@ -161,6 +179,27 @@ public class CotIngestStream {
         //perDayKeyedStream.peek((key, reading) -> System.out.println(key + ": " + reading));
         //perMonthKeyedStream.peek((key, reading) -> System.out.println(key + ": " + reading));
         //perYearKeyedStream.peek((key, reading) -> System.out.println(key + ": " + reading));
+
+        KTable<String, AggregateValueTuple> perMinAggregate = perMinKeyedStream.aggregate(new Initializer<AggregateValueTuple>() {
+                                                                                              @Override
+                                                                                              public AggregateValueTuple apply() {
+                                                                                                  return new AggregateValueTuple(0L, 0.0, 0.0);
+                                                                                              }
+                                                                                          },
+                new Aggregator<String, AirQualityReading, AggregateValueTuple>() {
+                    @Override
+                    public AggregateValueTuple apply(String key, AirQualityReading value, AggregateValueTuple aggregate) {
+                        aggregate.count = aggregate.count + 1;
+                        aggregate.sum = aggregate.sum + (Double) value.getValue();
+                        aggregate.avg = aggregate.sum / aggregate.count;
+                        return aggregate;
+                    }
+                }, Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("per-min-" + finalMetricId.replace("::", ".")).withValueSerde(aggSerde));
+
+        KStream<String, AggregateValueTuple> perMinAggregateStream = perMinAggregate.toStream();
+        perMinAggregateStream.peek((key, aggregate) -> System.out.println(key + ": " + aggregate));
+
+               // .to("per-min-" + aQMetricId.replace("::", ".") + "-output", Produced.with(Serdes.String(), aggSerde));
 
         final Topology topology = builder.build();
         System.out.println(topology.describe());
