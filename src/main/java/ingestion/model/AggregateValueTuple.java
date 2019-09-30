@@ -5,6 +5,10 @@ public class AggregateValueTuple {
     public Double sum;
     public Double avg;
 
+    public AggregateValueTuple() {
+        super();
+    }
+
     public AggregateValueTuple(long c, double s, double a) {
         count = c;
         sum = s;

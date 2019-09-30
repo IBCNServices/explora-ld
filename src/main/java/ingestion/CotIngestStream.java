@@ -50,6 +50,13 @@ public class CotIngestStream {
     public static final String KBROKERS = "10.10.139.32:9092";
     public static final int DEFAULT_GH_PRECISION = 6;
 
+    public static AggregateValueTuple airQReadingAggregator(String key, AirQualityReading value, AggregateValueTuple aggregate) {
+        aggregate.count = aggregate.count + 1;
+        aggregate.sum = aggregate.sum + (Double) value.getValue();
+        aggregate.avg = aggregate.sum / aggregate.count;
+        return aggregate;
+    }
+
     public static void main(String[] args) throws Exception {
         String aQMetricId = null;
         int geohashPrecision = 0;
@@ -130,7 +137,8 @@ public class CotIngestStream {
                 (metricId, reading) -> metricId.equals(finalMetricId)
         );
         //.to("cot."+METRIC_ID.replace("::","."), Produced.with(Serdes.String(), aQSerde));
-        //.to("cot.airquality-metric-key", Produced.with(Serdes.String(), aQSerde));
+        //filteredStream.to("cot.airquality-metric-key", Produced.with(Serdes.String(), aQSerde));
+        //filteredStream.peek((key, reading) -> System.out.println(key + ": " + reading));
         //.print(Printed.toSysOut());
 
         final int finalGeohashPrecision = geohashPrecision;
@@ -180,26 +188,45 @@ public class CotIngestStream {
         //perMonthKeyedStream.peek((key, reading) -> System.out.println(key + ": " + reading));
         //perYearKeyedStream.peek((key, reading) -> System.out.println(key + ": " + reading));
 
-        KTable<String, AggregateValueTuple> perMinAggregate = perMinKeyedStream.aggregate(new Initializer<AggregateValueTuple>() {
-                                                                                              @Override
-                                                                                              public AggregateValueTuple apply() {
-                                                                                                  return new AggregateValueTuple(0L, 0.0, 0.0);
-                                                                                              }
-                                                                                          },
-                new Aggregator<String, AirQualityReading, AggregateValueTuple>() {
-                    @Override
-                    public AggregateValueTuple apply(String key, AirQualityReading value, AggregateValueTuple aggregate) {
-                        aggregate.count = aggregate.count + 1;
-                        aggregate.sum = aggregate.sum + (Double) value.getValue();
-                        aggregate.avg = aggregate.sum / aggregate.count;
-                        return aggregate;
-                    }
-                }, Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("per-min-" + finalMetricId.replace("::", ".")).withValueSerde(aggSerde));
+        // Generate KTables with continuous aggregates for each time resolution
 
-        KStream<String, AggregateValueTuple> perMinAggregateStream = perMinAggregate.toStream();
-        perMinAggregateStream.peek((key, aggregate) -> System.out.println(key + ": " + aggregate));
+        KTable<String, AggregateValueTuple> perMinAggregate = perMinKeyedStream.aggregate(
+                () -> new AggregateValueTuple(0L, 0.0, 0.0),
+                (key, value, aggregate) -> airQReadingAggregator(key, value, aggregate),
+                Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + finalMetricId.replace("::", ".") + "-min").withValueSerde(aggSerde)
+        );
 
-               // .to("per-min-" + aQMetricId.replace("::", ".") + "-output", Produced.with(Serdes.String(), aggSerde));
+        KTable<String, AggregateValueTuple> perHourAggregate = perHourKeyedStream.aggregate(
+                () -> new AggregateValueTuple(0L, 0.0, 0.0),
+                (key, value, aggregate) -> airQReadingAggregator(key, value, aggregate),
+                Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + finalMetricId.replace("::", ".") + "-hour").withValueSerde(aggSerde)
+        );
+
+        KTable<String, AggregateValueTuple> perDayAggregate = perDayKeyedStream.aggregate(
+                () -> new AggregateValueTuple(0L, 0.0, 0.0),
+                (key, value, aggregate) -> airQReadingAggregator(key, value, aggregate),
+                Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + finalMetricId.replace("::", ".") + "-day").withValueSerde(aggSerde)
+        );
+
+        KTable<String, AggregateValueTuple> perMonthAggregate = perMonthKeyedStream.aggregate(
+                () -> new AggregateValueTuple(0L, 0.0, 0.0),
+                (key, value, aggregate) -> airQReadingAggregator(key, value, aggregate),
+                Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + finalMetricId.replace("::", ".") + "-month").withValueSerde(aggSerde)
+        );
+
+        KTable<String, AggregateValueTuple> perYearAggregate = perYearKeyedStream.aggregate(
+                () -> new AggregateValueTuple(0L, 0.0, 0.0),
+                (key, value, aggregate) -> airQReadingAggregator(key, value, aggregate),
+                Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + finalMetricId.replace("::", ".") + "-year").withValueSerde(aggSerde)
+        );
+
+        // Get streams from KTables to peek into them (to check if they are working as expected)
+
+        perMinAggregate.toStream().peek((key, aggregate) -> System.out.println("[MIN] --" + key + ": " + aggregate));
+        perHourAggregate.toStream().peek((key, aggregate) -> System.out.println("[HOUR] --" + key + ": " + aggregate));
+        perDayAggregate.toStream().peek((key, aggregate) -> System.out.println("[DAY] --" + key + ": " + aggregate));
+        perMonthAggregate.toStream().peek((key, aggregate) -> System.out.println("[MONTH] --" + key + ": " + aggregate));
+        perYearAggregate.toStream().peek((key, aggregate) -> System.out.println("[YEAR] --" + key + ": " + aggregate));
 
         final Topology topology = builder.build();
         System.out.println(topology.describe());
