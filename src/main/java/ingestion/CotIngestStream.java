@@ -95,7 +95,7 @@ public class CotIngestStream {
         }
 
         Properties props = new Properties();
-        props.put(StreamsConfig.APPLICATION_ID_CONFIG, APP_NAME);
+        props.put(StreamsConfig.APPLICATION_ID_CONFIG, APP_NAME + "-gh" + geohashPrecision);
         props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, KBROKERS);
         props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
         props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
@@ -195,9 +195,10 @@ public class CotIngestStream {
 
         // Generate KTables with continuous aggregates for each time resolution
 
-        KTable<String, AirQualityReading> airQualityKTable = airQualityKeyedStream.groupByKey().reduce(
+        /*KTable<String, AirQualityReading> airQualityKTable = airQualityKeyedStream.groupByKey().reduce(
                 (aggReading, newReading) -> newReading,
-                Materialized.<String, AirQualityReading, KeyValueStore<Bytes, byte[]>>as("raw-" + finalMetricId.replace("::", ".")).withValueSerde(aQSerde));
+                Materialized.<String, AirQualityReading, KeyValueStore<Bytes, byte[]>>as("raw-" + finalMetricId.replace("::", ".")).withValueSerde(aQSerde)
+        );*/
 
         KTable<String, AggregateValueTuple> perMinAggregate = perMinKeyedStream.aggregate(
                 () -> new AggregateValueTuple(0L, 0.0, 0.0),
@@ -237,6 +238,15 @@ public class CotIngestStream {
         perDayAggregate.toStream().peek((key, aggregate) -> System.out.println("[DAY] --" + key + ": " + aggregate));
         perMonthAggregate.toStream().peek((key, aggregate) -> System.out.println("[MONTH] --" + key + ": " + aggregate));
         perYearAggregate.toStream().peek((key, aggregate) -> System.out.println("[YEAR] --" + key + ": " + aggregate));*/
+
+        // Store KTables as kafka topics (changelog stream)
+
+        airQualityKeyedStream.to("raw-" + finalMetricId.replace("::", "."), Produced.with(Serdes.String(), aQSerde));
+        perMinAggregate.toStream().to("view-" + finalMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-min", Produced.with(Serdes.String(), aggSerde));
+        perHourAggregate.toStream().to("view-" + finalMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-hour", Produced.with(Serdes.String(), aggSerde));
+        perDayAggregate.toStream().to("view-" + finalMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-day", Produced.with(Serdes.String(), aggSerde));
+        perMonthAggregate.toStream().to("view-" + finalMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-month", Produced.with(Serdes.String(), aggSerde));
+        perYearAggregate.toStream().to("view-" + finalMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-year", Produced.with(Serdes.String(), aggSerde));
 
         final Topology topology = builder.build();
         System.out.println(topology.describe());
