@@ -16,10 +16,10 @@
  */
 package ingestion;
 
-import ingestion.model.AggregateValueTuple;
-import ingestion.model.AirQualityReading;
-import ingestion.serdes.JsonPOJODeserializer;
-import ingestion.serdes.JsonPOJOSerializer;
+import model.AggregateValueTuple;
+import model.AirQualityReading;
+import util.serdes.JsonPOJODeserializer;
+import util.serdes.JsonPOJOSerializer;
 import org.apache.commons.cli.*;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.Deserializer;
@@ -142,6 +142,11 @@ public class CotIngestStream {
         //.print(Printed.toSysOut());
 
         final int finalGeohashPrecision = geohashPrecision;
+
+        KStream<String, AirQualityReading> airQualityKeyedStream = filteredStream.selectKey(
+                (metricId, reading) -> reading.getGeohash() + "#" + reading.getTimestamp()
+        );
+
         KGroupedStream<String, AirQualityReading> perMinKeyedStream = filteredStream.selectKey(
                 (metricId, reading) -> {
                     Date readingDate = new Date(reading.getTimestamp());
@@ -153,32 +158,32 @@ public class CotIngestStream {
         KGroupedStream<String, AirQualityReading> perHourKeyedStream = filteredStream.selectKey(
                 (metricId, reading) -> {
                     Date readingDate = new Date(reading.getTimestamp());
-                    long minTimestamp = truncate(readingDate, Calendar.HOUR).getTime();
-                    return reading.getGeohash().substring(0, finalGeohashPrecision) + "#" + minTimestamp;
+                    long hourTimestamp = truncate(readingDate, Calendar.HOUR).getTime();
+                    return reading.getGeohash().substring(0, finalGeohashPrecision) + "#" + hourTimestamp;
                 }
         ).groupByKey();
 
         KGroupedStream<String, AirQualityReading> perDayKeyedStream = filteredStream.selectKey(
                 (metricId, reading) -> {
                     Date readingDate = new Date(reading.getTimestamp());
-                    long minTimestamp = truncate(readingDate, Calendar.DATE).getTime();
-                    return reading.getGeohash().substring(0, finalGeohashPrecision) + "#" + minTimestamp;
+                    long dayTimestamp = truncate(readingDate, Calendar.DATE).getTime();
+                    return reading.getGeohash().substring(0, finalGeohashPrecision) + "#" + dayTimestamp;
                 }
         ).groupByKey();
 
         KGroupedStream<String, AirQualityReading> perMonthKeyedStream = filteredStream.selectKey(
                 (metricId, reading) -> {
                     Date readingDate = new Date(reading.getTimestamp());
-                    long minTimestamp = truncate(readingDate, Calendar.MONTH).getTime();
-                    return reading.getGeohash().substring(0, finalGeohashPrecision) + "#" + minTimestamp;
+                    long monthTimestamp = truncate(readingDate, Calendar.MONTH).getTime();
+                    return reading.getGeohash().substring(0, finalGeohashPrecision) + "#" + monthTimestamp;
                 }
         ).groupByKey();
 
         KGroupedStream<String, AirQualityReading> perYearKeyedStream = filteredStream.selectKey(
                 (metricId, reading) -> {
                     Date readingDate = new Date(reading.getTimestamp());
-                    long minTimestamp = truncate(readingDate, Calendar.YEAR).getTime();
-                    return reading.getGeohash().substring(0, finalGeohashPrecision) + "#" + minTimestamp;
+                    long yearTimestamp = truncate(readingDate, Calendar.YEAR).getTime();
+                    return reading.getGeohash().substring(0, finalGeohashPrecision) + "#" + yearTimestamp;
                 }
         ).groupByKey();
 
@@ -189,6 +194,10 @@ public class CotIngestStream {
         //perYearKeyedStream.peek((key, reading) -> System.out.println(key + ": " + reading));
 
         // Generate KTables with continuous aggregates for each time resolution
+
+        KTable<String, AirQualityReading> airQualityKTable = airQualityKeyedStream.groupByKey().reduce(
+                (aggReading, newReading) -> newReading,
+                Materialized.<String, AirQualityReading, KeyValueStore<Bytes, byte[]>>as("raw-" + finalMetricId.replace("::", ".")).withValueSerde(aQSerde));
 
         KTable<String, AggregateValueTuple> perMinAggregate = perMinKeyedStream.aggregate(
                 () -> new AggregateValueTuple(0L, 0.0, 0.0),
@@ -222,7 +231,8 @@ public class CotIngestStream {
 
         // Get streams from KTables to peek into them (to check if they are working as expected)
 
-        /*perMinAggregate.toStream().peek((key, aggregate) -> System.out.println("[MIN] --" + key + ": " + aggregate));
+        /*airQualityKTable.toStream().peek((key, reading) -> System.out.println("[RAW] --" + key + ": " + reading));
+        perMinAggregate.toStream().peek((key, aggregate) -> System.out.println("[MIN] --" + key + ": " + aggregate));
         perHourAggregate.toStream().peek((key, aggregate) -> System.out.println("[HOUR] --" + key + ": " + aggregate));
         perDayAggregate.toStream().peek((key, aggregate) -> System.out.println("[DAY] --" + key + ": " + aggregate));
         perMonthAggregate.toStream().peek((key, aggregate) -> System.out.println("[MONTH] --" + key + ": " + aggregate));

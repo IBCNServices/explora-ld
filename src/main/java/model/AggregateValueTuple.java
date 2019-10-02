@@ -1,4 +1,4 @@
-package ingestion.model;
+package model;
 
 public class AggregateValueTuple {
     public Long count;
