@@ -193,40 +193,40 @@ public class CotIngestStream {
         KTable<String, AggregateValueTuple> perMinAggregate = perMinKeyedStream.aggregate(
                 () -> new AggregateValueTuple(0L, 0.0, 0.0),
                 (key, value, aggregate) -> airQReadingAggregator(key, value, aggregate),
-                Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + finalMetricId.replace("::", ".") + "-min").withValueSerde(aggSerde)
+                Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + finalMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-min").withValueSerde(aggSerde)
         );
 
         KTable<String, AggregateValueTuple> perHourAggregate = perHourKeyedStream.aggregate(
                 () -> new AggregateValueTuple(0L, 0.0, 0.0),
                 (key, value, aggregate) -> airQReadingAggregator(key, value, aggregate),
-                Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + finalMetricId.replace("::", ".") + "-hour").withValueSerde(aggSerde)
+                Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + finalMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-hour").withValueSerde(aggSerde)
         );
 
         KTable<String, AggregateValueTuple> perDayAggregate = perDayKeyedStream.aggregate(
                 () -> new AggregateValueTuple(0L, 0.0, 0.0),
                 (key, value, aggregate) -> airQReadingAggregator(key, value, aggregate),
-                Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + finalMetricId.replace("::", ".") + "-day").withValueSerde(aggSerde)
+                Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + finalMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-day").withValueSerde(aggSerde)
         );
 
         KTable<String, AggregateValueTuple> perMonthAggregate = perMonthKeyedStream.aggregate(
                 () -> new AggregateValueTuple(0L, 0.0, 0.0),
                 (key, value, aggregate) -> airQReadingAggregator(key, value, aggregate),
-                Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + finalMetricId.replace("::", ".") + "-month").withValueSerde(aggSerde)
+                Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + finalMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-month").withValueSerde(aggSerde)
         );
 
         KTable<String, AggregateValueTuple> perYearAggregate = perYearKeyedStream.aggregate(
                 () -> new AggregateValueTuple(0L, 0.0, 0.0),
                 (key, value, aggregate) -> airQReadingAggregator(key, value, aggregate),
-                Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + finalMetricId.replace("::", ".") + "-year").withValueSerde(aggSerde)
+                Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + finalMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-year").withValueSerde(aggSerde)
         );
 
         // Get streams from KTables to peek into them (to check if they are working as expected)
 
-        perMinAggregate.toStream().peek((key, aggregate) -> System.out.println("[MIN] --" + key + ": " + aggregate));
+        /*perMinAggregate.toStream().peek((key, aggregate) -> System.out.println("[MIN] --" + key + ": " + aggregate));
         perHourAggregate.toStream().peek((key, aggregate) -> System.out.println("[HOUR] --" + key + ": " + aggregate));
         perDayAggregate.toStream().peek((key, aggregate) -> System.out.println("[DAY] --" + key + ": " + aggregate));
         perMonthAggregate.toStream().peek((key, aggregate) -> System.out.println("[MONTH] --" + key + ": " + aggregate));
-        perYearAggregate.toStream().peek((key, aggregate) -> System.out.println("[YEAR] --" + key + ": " + aggregate));
+        perYearAggregate.toStream().peek((key, aggregate) -> System.out.println("[YEAR] --" + key + ": " + aggregate));*/
 
         final Topology topology = builder.build();
         System.out.println(topology.describe());
