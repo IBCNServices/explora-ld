@@ -14,6 +14,20 @@ public class AirQualityReading {
     private Object value;
     private String timeUnit;
 
+    public AirQualityReading() {
+    }
+
+    public AirQualityReading(Long tsReceivedMs, String metricId, Long timestamp, String sourceId, String geohash, Long h3Index, Double elevation, Object value, String timeUnit) {
+        this.tsReceivedMs = tsReceivedMs;
+        this.metricId = metricId;
+        this.timestamp = timestamp;
+        this.sourceId = sourceId;
+        this.geohash = geohash;
+        this.h3Index = h3Index;
+        this.elevation = elevation;
+        this.value = value;
+        this.timeUnit = timeUnit;
+    }
 
     public Long getTsReceivedMs() {
         return tsReceivedMs;

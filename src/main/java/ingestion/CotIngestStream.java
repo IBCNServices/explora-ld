@@ -17,7 +17,9 @@
 package ingestion;
 
 import model.AggregateValueTuple;
+import model.AirQualityKeyedReading;
 import model.AirQualityReading;
+import org.apache.kafka.streams.*;
 import util.serdes.JsonPOJODeserializer;
 import util.serdes.JsonPOJOSerializer;
 import org.apache.commons.cli.*;
@@ -27,10 +29,6 @@ import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.common.utils.Bytes;
-import org.apache.kafka.streams.KafkaStreams;
-import org.apache.kafka.streams.StreamsBuilder;
-import org.apache.kafka.streams.StreamsConfig;
-import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.*;
 import org.apache.kafka.streams.state.KeyValueStore;
 
@@ -51,6 +49,9 @@ public class CotIngestStream {
     public static final int DEFAULT_GH_PRECISION = 6;
 
     public static AggregateValueTuple airQReadingAggregator(String key, AirQualityReading value, AggregateValueTuple aggregate) {
+        aggregate.gh_ts = key;
+        aggregate.gh = key.split("#")[0];
+        aggregate.ts = Long.valueOf(key.split("#")[1]);
         aggregate.count = aggregate.count + 1;
         aggregate.sum = aggregate.sum + (Double) value.getValue();
         aggregate.avg = aggregate.sum / aggregate.count;
@@ -117,6 +118,17 @@ public class CotIngestStream {
         final Serde<AirQualityReading> aQSerde = Serdes.serdeFrom(aQSerializer, aQDeserializer);
 
         serdeProps = new HashMap<>();
+        final Serializer<AirQualityKeyedReading> aQKSerializer = new JsonPOJOSerializer<>();
+        serdeProps.put("JsonPOJOClass", AirQualityKeyedReading.class);
+        aQKSerializer.configure(serdeProps, false);
+
+        final Deserializer<AirQualityKeyedReading> aQKDeserializer = new JsonPOJODeserializer<>();
+        serdeProps.put("JsonPOJOClass", AirQualityKeyedReading.class);
+        aQKDeserializer.configure(serdeProps, false);
+
+        final Serde<AirQualityKeyedReading> aQKSerde = Serdes.serdeFrom(aQKSerializer, aQKDeserializer);
+
+        serdeProps = new HashMap<>();
         final Serializer<AggregateValueTuple> aggSerializer = new JsonPOJOSerializer<>();
         serdeProps.put("JsonPOJOClass", AggregateValueTuple.class);
         aggSerializer.configure(serdeProps, false);
@@ -143,8 +155,19 @@ public class CotIngestStream {
 
         final int finalGeohashPrecision = geohashPrecision;
 
-        KStream<String, AirQualityReading> airQualityKeyedStream = filteredStream.selectKey(
-                (metricId, reading) -> reading.getGeohash() + "#" + reading.getTimestamp()
+        KStream<String, AirQualityKeyedReading> airQualityKeyedStream = filteredStream.map(
+                (metricId, reading) -> KeyValue.pair(reading.getGeohash() + "#" + reading.getTimestamp(), new AirQualityKeyedReading(
+                        reading.getTsReceivedMs(),
+                        reading.getMetricId(),
+                        reading.getTimestamp(),
+                        reading.getSourceId(),
+                        reading.getGeohash(),
+                        reading.getH3Index(),
+                        reading.getElevation(),
+                        reading.getValue(),
+                        reading.getTimeUnit(),
+                        reading.getGeohash() + "#" + reading.getTimestamp()
+                ))
         );
 
         KGroupedStream<String, AirQualityReading> perMinKeyedStream = filteredStream.selectKey(
@@ -194,38 +217,38 @@ public class CotIngestStream {
         //perYearKeyedStream.peek((key, reading) -> System.out.println(key + ": " + reading));
 
         // Generate KTables with continuous aggregates for each time resolution
-
         /*KTable<String, AirQualityReading> airQualityKTable = airQualityKeyedStream.groupByKey().reduce(
                 (aggReading, newReading) -> newReading,
                 Materialized.<String, AirQualityReading, KeyValueStore<Bytes, byte[]>>as("raw-" + finalMetricId.replace("::", ".")).withValueSerde(aQSerde)
         );*/
 
+        assert finalMetricId != null;
         KTable<String, AggregateValueTuple> perMinAggregate = perMinKeyedStream.aggregate(
-                () -> new AggregateValueTuple(0L, 0.0, 0.0),
+                () -> new AggregateValueTuple("", "", 0L, 0L, 0.0, 0.0),
                 (key, value, aggregate) -> airQReadingAggregator(key, value, aggregate),
                 Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + finalMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-min").withValueSerde(aggSerde)
         );
 
         KTable<String, AggregateValueTuple> perHourAggregate = perHourKeyedStream.aggregate(
-                () -> new AggregateValueTuple(0L, 0.0, 0.0),
+                () -> new AggregateValueTuple("", "", 0L, 0L, 0.0, 0.0),
                 (key, value, aggregate) -> airQReadingAggregator(key, value, aggregate),
                 Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + finalMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-hour").withValueSerde(aggSerde)
         );
 
         KTable<String, AggregateValueTuple> perDayAggregate = perDayKeyedStream.aggregate(
-                () -> new AggregateValueTuple(0L, 0.0, 0.0),
+                () -> new AggregateValueTuple("", "", 0L, 0L, 0.0, 0.0),
                 (key, value, aggregate) -> airQReadingAggregator(key, value, aggregate),
                 Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + finalMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-day").withValueSerde(aggSerde)
         );
 
         KTable<String, AggregateValueTuple> perMonthAggregate = perMonthKeyedStream.aggregate(
-                () -> new AggregateValueTuple(0L, 0.0, 0.0),
+                () -> new AggregateValueTuple("", "", 0L, 0L, 0.0, 0.0),
                 (key, value, aggregate) -> airQReadingAggregator(key, value, aggregate),
                 Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + finalMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-month").withValueSerde(aggSerde)
         );
 
         KTable<String, AggregateValueTuple> perYearAggregate = perYearKeyedStream.aggregate(
-                () -> new AggregateValueTuple(0L, 0.0, 0.0),
+                () -> new AggregateValueTuple("", "", 0L, 0L, 0.0, 0.0),
                 (key, value, aggregate) -> airQReadingAggregator(key, value, aggregate),
                 Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + finalMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-year").withValueSerde(aggSerde)
         );
@@ -241,7 +264,7 @@ public class CotIngestStream {
 
         // Store KTables as kafka topics (changelog stream)
 
-        airQualityKeyedStream.to("raw-" + finalMetricId.replace("::", "."), Produced.with(Serdes.String(), aQSerde));
+        airQualityKeyedStream.to("raw-" + finalMetricId.replace("::", "."), Produced.with(Serdes.String(), aQKSerde));
         perMinAggregate.toStream().to("view-" + finalMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-min", Produced.with(Serdes.String(), aggSerde));
         perHourAggregate.toStream().to("view-" + finalMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-hour", Produced.with(Serdes.String(), aggSerde));
         perDayAggregate.toStream().to("view-" + finalMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-day", Produced.with(Serdes.String(), aggSerde));
