@@ -43,10 +43,10 @@ import static org.apache.commons.lang3.time.DateUtils.truncate;
 
 public class CotIngestStream {
 
-    public static final String DEFAULT_METRIC_ID = "airquality.no2::number";
-    public static final String APP_NAME = "cot-aq-ingestion";
-    public static final String KBROKERS = "10.10.139.32:9092";
-    public static final int DEFAULT_GH_PRECISION = 6;
+    public static final String DEFAULT_METRIC_ID = System.getenv("METRIC_ID") != null ? System.getenv("METRIC_ID") : "airquality.no2::number";
+    public static final String APP_NAME = System.getenv("APP_NAME") != null ? System.getenv("APP_NAME") : "cot-aq-ingestion";
+    public static final String KBROKERS = System.getenv("KBROKERS") != null ? System.getenv("KBROKERS") : "10.10.139.32:9092";
+    public static final int DEFAULT_GH_PRECISION = System.getenv("GEOHASH_PRECISION") != null ? Integer.parseInt(System.getenv("GEOHASH_PRECISION")) : 6;
 
     public static AggregateValueTuple airQReadingAggregator(String key, AirQualityReading value, AggregateValueTuple aggregate) {
         aggregate.gh_ts = key;
