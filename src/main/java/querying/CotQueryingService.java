@@ -1,6 +1,5 @@
 package querying;
 
-import jdk.management.resource.internal.inst.SocketOutputStreamRMHooks;
 import model.AggregateValueTuple;
 import org.apache.kafka.common.serialization.LongSerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
