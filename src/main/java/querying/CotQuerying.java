@@ -17,7 +17,7 @@ import java.util.concurrent.CountDownLatch;
 /* THIS CLASS IS NOT YET OPERATIONAL */
 public class CotQuerying {
     public static final String DEFAULT_METRIC_ID = "airquality.no2::number";
-    public static final String APP_NAME = "cot-aq-querying";
+    public static final String APP_NAME = "cot-aq-ingestion-gh6";
     public static final String KBROKERS = "10.10.139.32:9092";
     public static final int DEFAULT_GH_PRECISION = 6;
 
@@ -75,7 +75,7 @@ public class CotQuerying {
         }
 
         ReadOnlyKeyValueStore<String,String> keyValueStore =
-                streams.store("raw-airquality.no2.number", QueryableStoreTypes.keyValueStore());
+                streams.store("view-airquality.no2.number-gh6-day", QueryableStoreTypes.keyValueStore());
 
         final KeyValueIterator<String,String> range = keyValueStore.all();
 
