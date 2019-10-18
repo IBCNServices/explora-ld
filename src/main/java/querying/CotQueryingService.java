@@ -5,6 +5,11 @@ import org.apache.kafka.common.serialization.LongSerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.state.HostInfo;
+import org.eclipse.jetty.server.ServerConnector;
+import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.eclipse.jetty.servlet.ServletHolder;
+import org.glassfish.jersey.server.ResourceConfig;
+import org.glassfish.jersey.servlet.ServletContainer;
 import util.AppConfig;
 import util.HostStoreInfo;
 import util.MetadataService;
@@ -32,7 +37,7 @@ public class CotQueryingService {
     private final LongSerializer serializer = new LongSerializer();
     private static final Logger log = LoggerFactory.getLogger(CotQueryingService.class);
 
-    CotQueryingService(final KafkaStreams streams, final HostInfo hostInfo) {
+    public CotQueryingService(final KafkaStreams streams, final HostInfo hostInfo) {
         this.streams = streams;
         this.metadataService = new MetadataService(streams);
         this.hostInfo = hostInfo;
@@ -50,13 +55,14 @@ public class CotQueryingService {
         // if the specified aggregate operation is not yet supported => 400 Bad Request
         String aggr_op = aggregate.toLowerCase();
         if(!AppConfig.SUPPORTED_AGGR.contains(aggr_op)) {
+            System.out.println(String.format("[queryAirQuality] aggregate %s is not yet supported", aggregate));
             throw new WebApplicationException(Response.Status.BAD_REQUEST);
         }
 
         String geohashes = qParams.getQueryParameters().getOrDefault("geohashes", Collections.singletonList("")).get(0).toLowerCase();
         String source = qParams.getQueryParameters().getOrDefault("src", Collections.singletonList("tiles")).get(0).toLowerCase();
         String resolution = qParams.getQueryParameters().getOrDefault("res", Collections.singletonList("")).get(0).toLowerCase();
-        String interval = qParams.getQueryParameters().getOrDefault("interval", Collections.singletonList("")).toString().toLowerCase();
+        String interval = qParams.getQueryParameters().getOrDefault("interval", Collections.singletonList("")).get(0).toLowerCase();
         int geohashPrecision;
         long fromDate, toDate, snap_ts;
         double radius;
@@ -73,6 +79,7 @@ public class CotQueryingService {
 
         // if the specified geohash precision operation is not yet supported => 400 Bad Request
         if(!AppConfig.SUPPORTED_GH_PRECISION.contains(geohashPrecision)) {
+            System.out.println(String.format("[queryAirQuality] geohash precision %s is not yet supported", geohashPrecision));
             throw new WebApplicationException(Response.Status.BAD_REQUEST);
         }
 
@@ -82,11 +89,13 @@ public class CotQueryingService {
             } else if (!(interval.isEmpty()) && AppConfig.SUPPORTED_INTERVALS.contains(interval)){
                 System.out.println("[query_airquality] query with spatial and time predicates...");
             } else {
+                System.out.println(String.format("[queryAirQuality] resolution %1$s or interval %2$s are not valid values", resolution, interval));
                 throw new WebApplicationException(Response.Status.BAD_REQUEST);
             }
         } else if (snap_ts != -1){
             System.out.println("[query_airquality] query with time predicate...");
         } else {
+            System.out.println("[queryAirQuality] Query parameters are not valid");
             throw new WebApplicationException(Response.Status.BAD_REQUEST);
         }
 
@@ -111,6 +120,50 @@ public class CotQueryingService {
     private boolean thisHost(final HostStoreInfo host) {
         return host.getHost().equals(hostInfo.host()) &&
                 host.getPort() == hostInfo.port();
+    }
+
+    /**
+     * Start an embedded Jetty Server
+     * @throws Exception from jetty
+     */
+    public void start() throws Exception {
+        final ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
+        context.setContextPath("/");
+
+        jettyServer = new Server();
+        jettyServer.setHandler(context);
+
+        final ResourceConfig rc = new ResourceConfig();
+        rc.register(this);
+        rc.register(JacksonFeature.class);
+
+        final ServletContainer sc = new ServletContainer(rc);
+        final ServletHolder holder = new ServletHolder(sc);
+        context.addServlet(holder, "/*");
+
+        final ServerConnector connector = new ServerConnector(jettyServer);
+        connector.setHost(hostInfo.host());
+        connector.setPort(hostInfo.port());
+        jettyServer.addConnector(connector);
+
+        context.start();
+
+        try {
+            jettyServer.start();
+        } catch (final java.net.SocketException exception) {
+            log.error("Unavailable: " + hostInfo.host() + ":" + hostInfo.port());
+            throw new Exception(exception.toString());
+        }
+    }
+
+    /**
+     * Stop the Jetty Server
+     * @throws Exception from jetty
+     */
+    public void stop() throws Exception {
+        if (jettyServer != null) {
+            jettyServer.stop();
+        }
     }
 
 }

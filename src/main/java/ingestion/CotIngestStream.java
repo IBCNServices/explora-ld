@@ -20,6 +20,8 @@ import model.AggregateValueTuple;
 import model.AirQualityKeyedReading;
 import model.AirQualityReading;
 import org.apache.kafka.streams.*;
+import org.apache.kafka.streams.state.HostInfo;
+import querying.CotQueryingService;
 import util.serdes.JsonPOJODeserializer;
 import util.serdes.JsonPOJOSerializer;
 import org.apache.commons.cli.*;
@@ -39,10 +41,13 @@ import static org.apache.commons.lang3.time.DateUtils.truncate;
 
 public class CotIngestStream {
 
-    public static final String DEFAULT_METRIC_ID = System.getenv("METRIC_ID") != null ? System.getenv("METRIC_ID") : "airquality.no2::number";
+    public static final String METRIC_ID = System.getenv("METRIC_ID") != null ? System.getenv("METRIC_ID") : "airquality.no2::number";
+    public static final String READINGS_TOPIC = System.getenv("READINGS_TOPIC") != null ? System.getenv("READINGS_TOPIC") : "cot.airquality";
     public static final String APP_NAME = System.getenv("APP_NAME") != null ? System.getenv("APP_NAME") : "cot-aq-ingestion";
     public static final String KBROKERS = System.getenv("KBROKERS") != null ? System.getenv("KBROKERS") : "10.10.139.32:9092";
-    public static final int DEFAULT_GH_PRECISION = System.getenv("GEOHASH_PRECISION") != null ? Integer.parseInt(System.getenv("GEOHASH_PRECISION")) : 6;
+    public static final String REST_ENDPOINT_HOSTNAME = System.getenv("REST_ENDPOINT_HOSTNAME") != null ? System.getenv("REST_ENDPOINT_HOSTNAME") : "localhost";
+    public static final int REST_ENDPOINT_PORT = System.getenv("REST_ENDPOINT_PORT") != null ? Integer.parseInt(System.getenv("REST_ENDPOINT_PORT")) : 7070;
+    public static final int GEOHASH_PRECISION = System.getenv("GEOHASH_PRECISION") != null ? Integer.parseInt(System.getenv("GEOHASH_PRECISION")) : 6;
 
     public static AggregateValueTuple airQReadingAggregator(String key, AirQualityReading value, AggregateValueTuple aggregate) {
         aggregate.gh_ts = key;
@@ -56,6 +61,9 @@ public class CotIngestStream {
 
     public static void main(String[] args) throws Exception {
         String aQMetricId = null;
+        String endpointHost = null;
+        String readingsTopic = null;
+        int endpointPort = 0;
         int geohashPrecision = 0;
         boolean cleanup = false;
 
@@ -64,8 +72,11 @@ public class CotIngestStream {
 
         // create the Options
         Options options = new Options();
-        options.addOption( "m", "metric-id", true, "Air quality Metric ID as registered in Obelisk. Defaults to '" + DEFAULT_METRIC_ID + "'");
-        options.addOption( "gh", "geohash-precision", true, "Geohash precision used to perform the continuous aggregation. Defaults to the application " + DEFAULT_GH_PRECISION);
+        options.addOption( "m", "metric-id", true, "Air quality Metric ID as registered in Obelisk. Defaults to '" + METRIC_ID + "'");
+        options.addOption( "t", "readings-topic", true, "Topic the air quality metric is being registered to in Obelisk. Defaults to '" + READINGS_TOPIC + "'");
+        options.addOption( "gh", "geohash-precision", true, "Geohash precision used to perform the continuous aggregation. Defaults to the application " + GEOHASH_PRECISION);
+        options.addOption( "h", "endpoint-host", true, "REST endpoint hostname. Defaults to " + REST_ENDPOINT_HOSTNAME);
+        options.addOption( "p", "endpoint-port", true, "REST endpoint port. Defaults to " + REST_ENDPOINT_PORT);
         options.addOption( "cl", "cleanup", false, "Should a cleanup be performed before staring. Defaults to false" );
 
         try {
@@ -75,12 +86,27 @@ public class CotIngestStream {
             if( line.hasOption( "metric-id" ) ) {
                 aQMetricId = line.getOptionValue("metric-id");
             } else {
-                aQMetricId = DEFAULT_METRIC_ID;
+                aQMetricId = METRIC_ID;
+            }
+            if( line.hasOption( "readings-topic" ) ) {
+                readingsTopic = line.getOptionValue("readings-topic");
+            } else {
+                readingsTopic = READINGS_TOPIC;
             }
             if( line.hasOption( "geohash-precision" ) ) {
                 geohashPrecision = Integer.parseInt(line.getOptionValue("geohash-precision"));
             } else {
-                geohashPrecision = DEFAULT_GH_PRECISION;
+                geohashPrecision = GEOHASH_PRECISION;
+            }
+            if( line.hasOption( "endpoint-host" ) ) {
+                endpointHost = line.getOptionValue("endpoint-host");
+            } else {
+                endpointHost = REST_ENDPOINT_HOSTNAME;
+            }
+            if( line.hasOption( "endpoint-host" ) ) {
+                endpointPort = Integer.parseInt(line.getOptionValue("endpoint-port"));
+            } else {
+                endpointPort = REST_ENDPOINT_PORT;
             }
             if( line.hasOption( "cleanup" ) ) {
                 cleanup = true;
@@ -91,13 +117,62 @@ public class CotIngestStream {
             formatter.printHelp("CotIngestStream", exp.getMessage(), options,null, true);
         }
 
+        final HostInfo restEndpoint = new HostInfo(endpointHost, endpointPort);
+
+        System.out.println("Connecting to Kafka cluster via bootstrap servers " + KBROKERS);
+        System.out.println("REST endpoint at http://" + endpointHost + ":" + endpointPort);
+
+        final KafkaStreams streams = new KafkaStreams(buildTopology(aQMetricId, readingsTopic, geohashPrecision), streamsConfig("/tmp/cot-airquality"));
+
+
+        if(cleanup) {
+            streams.cleanUp();
+        }
+        streams.start();
+        // Start the Restful proxy for servicing remote access to state stores
+        final CotQueryingService queryingService = startRestProxy(streams, restEndpoint);
+
+        final CountDownLatch latch = new CountDownLatch(1);
+
+        // attach shutdown handler to catch control-c
+        Runtime.getRuntime().addShutdownHook(new Thread("streams-shutdown-hook") {
+            @Override
+            public void run() {
+                try {
+                    streams.close();
+                    queryingService.stop();
+                } catch (Throwable e) {
+                    System.exit(1);
+                }
+                latch.countDown();
+            }
+        });
+
+        latch.await();
+        System.exit(0);
+    }
+
+    private static CotQueryingService startRestProxy(final KafkaStreams streams, final HostInfo hostInfo)
+            throws Exception {
+        final CotQueryingService
+                interactiveQueriesRestService = new CotQueryingService(streams, hostInfo);
+        interactiveQueriesRestService.start();
+        return interactiveQueriesRestService;
+    }
+
+    private static Properties streamsConfig(final String stateDir) {
         Properties props = new Properties();
-        props.put(StreamsConfig.APPLICATION_ID_CONFIG, APP_NAME + "-gh" + geohashPrecision);
+        props.put(StreamsConfig.APPLICATION_ID_CONFIG, APP_NAME + "-gh" + GEOHASH_PRECISION);
         props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, KBROKERS);
         props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
         props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
+        props.put(StreamsConfig.APPLICATION_SERVER_CONFIG, REST_ENDPOINT_HOSTNAME + ":" + REST_ENDPOINT_PORT);
+        props.put(StreamsConfig.STATE_DIR_CONFIG, stateDir);
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        return props;
+    }
 
+    private static Topology buildTopology(String aQMetricId, String readingsTopic, int geohashPrecision) {
         final StreamsBuilder builder = new StreamsBuilder();
 
         // Set up Serializers and Deserializers
@@ -137,19 +212,19 @@ public class CotIngestStream {
 
         // Set streaming topology and transformations
 
-        KStream<byte[], AirQualityReading> source = builder.stream("cot.airquality", Consumed.with(Serdes.ByteArray(), aQSerde));
-        final String finalMetricId = aQMetricId;
+        KStream<byte[], AirQualityReading> source = builder.stream(readingsTopic, Consumed.with(Serdes.ByteArray(), aQSerde));
+        //final String finalMetricId = aQMetricId;
         KStream<String, AirQualityReading> filteredStream = source.selectKey(
                 (key, reading) -> reading.getMetricId()
         ).filter(
-                (metricId, reading) -> metricId.equals(finalMetricId)
+                (metricId, reading) -> metricId.equals(aQMetricId)
         );
         //.to("cot."+METRIC_ID.replace("::","."), Produced.with(Serdes.String(), aQSerde));
         //filteredStream.to("cot.airquality-metric-key", Produced.with(Serdes.String(), aQSerde));
         //filteredStream.peek((key, reading) -> System.out.println(key + ": " + reading));
         //.print(Printed.toSysOut());
 
-        final int finalGeohashPrecision = geohashPrecision;
+        //final int finalGeohashPrecision = geohashPrecision;
 
         KStream<String, AirQualityKeyedReading> airQualityKeyedStream = filteredStream.map(
                 (metricId, reading) -> KeyValue.pair(reading.getGeohash() + "#" + reading.getTimestamp(), new AirQualityKeyedReading(
@@ -170,7 +245,7 @@ public class CotIngestStream {
                 (metricId, reading) -> {
                     Date readingDate = new Date(reading.getTimestamp());
                     long minTimestamp = truncate(readingDate, Calendar.MINUTE).getTime();
-                    return reading.getGeohash().substring(0, finalGeohashPrecision) + "#" + minTimestamp;
+                    return reading.getGeohash().substring(0, geohashPrecision) + "#" + minTimestamp;
                 }
         ).groupByKey();
 
@@ -178,7 +253,7 @@ public class CotIngestStream {
                 (metricId, reading) -> {
                     Date readingDate = new Date(reading.getTimestamp());
                     long hourTimestamp = truncate(readingDate, Calendar.HOUR).getTime();
-                    return reading.getGeohash().substring(0, finalGeohashPrecision) + "#" + hourTimestamp;
+                    return reading.getGeohash().substring(0, geohashPrecision) + "#" + hourTimestamp;
                 }
         ).groupByKey();
 
@@ -186,7 +261,7 @@ public class CotIngestStream {
                 (metricId, reading) -> {
                     Date readingDate = new Date(reading.getTimestamp());
                     long dayTimestamp = truncate(readingDate, Calendar.DATE).getTime();
-                    return reading.getGeohash().substring(0, finalGeohashPrecision) + "#" + dayTimestamp;
+                    return reading.getGeohash().substring(0, geohashPrecision) + "#" + dayTimestamp;
                 }
         ).groupByKey();
 
@@ -194,7 +269,7 @@ public class CotIngestStream {
                 (metricId, reading) -> {
                     Date readingDate = new Date(reading.getTimestamp());
                     long monthTimestamp = truncate(readingDate, Calendar.MONTH).getTime();
-                    return reading.getGeohash().substring(0, finalGeohashPrecision) + "#" + monthTimestamp;
+                    return reading.getGeohash().substring(0, geohashPrecision) + "#" + monthTimestamp;
                 }
         ).groupByKey();
 
@@ -202,7 +277,7 @@ public class CotIngestStream {
                 (metricId, reading) -> {
                     Date readingDate = new Date(reading.getTimestamp());
                     long yearTimestamp = truncate(readingDate, Calendar.YEAR).getTime();
-                    return reading.getGeohash().substring(0, finalGeohashPrecision) + "#" + yearTimestamp;
+                    return reading.getGeohash().substring(0, geohashPrecision) + "#" + yearTimestamp;
                 }
         ).groupByKey();
 
@@ -218,35 +293,35 @@ public class CotIngestStream {
                 Materialized.<String, AirQualityReading, KeyValueStore<Bytes, byte[]>>as("raw-" + finalMetricId.replace("::", ".")).withValueSerde(aQSerde)
         );*/
 
-        assert finalMetricId != null;
+        assert aQMetricId != null;
         KTable<String, AggregateValueTuple> perMinAggregate = perMinKeyedStream.aggregate(
                 () -> new AggregateValueTuple("", "", 0L, 0L, 0.0, 0.0),
                 (key, value, aggregate) -> airQReadingAggregator(key, value, aggregate),
-                Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + finalMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-min").withValueSerde(aggSerde)
+                Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + aQMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-min").withValueSerde(aggSerde)
         );
 
         KTable<String, AggregateValueTuple> perHourAggregate = perHourKeyedStream.aggregate(
                 () -> new AggregateValueTuple("", "", 0L, 0L, 0.0, 0.0),
                 (key, value, aggregate) -> airQReadingAggregator(key, value, aggregate),
-                Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + finalMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-hour").withValueSerde(aggSerde)
+                Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + aQMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-hour").withValueSerde(aggSerde)
         );
 
         KTable<String, AggregateValueTuple> perDayAggregate = perDayKeyedStream.aggregate(
                 () -> new AggregateValueTuple("", "", 0L, 0L, 0.0, 0.0),
                 (key, value, aggregate) -> airQReadingAggregator(key, value, aggregate),
-                Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + finalMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-day").withValueSerde(aggSerde)
+                Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + aQMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-day").withValueSerde(aggSerde)
         );
 
         KTable<String, AggregateValueTuple> perMonthAggregate = perMonthKeyedStream.aggregate(
                 () -> new AggregateValueTuple("", "", 0L, 0L, 0.0, 0.0),
                 (key, value, aggregate) -> airQReadingAggregator(key, value, aggregate),
-                Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + finalMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-month").withValueSerde(aggSerde)
+                Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + aQMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-month").withValueSerde(aggSerde)
         );
 
         KTable<String, AggregateValueTuple> perYearAggregate = perYearKeyedStream.aggregate(
                 () -> new AggregateValueTuple("", "", 0L, 0L, 0.0, 0.0),
                 (key, value, aggregate) -> airQReadingAggregator(key, value, aggregate),
-                Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + finalMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-year").withValueSerde(aggSerde)
+                Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + aQMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-year").withValueSerde(aggSerde)
         );
 
         // Get streams from KTables to peek into them (to check if they are working as expected)
@@ -260,37 +335,15 @@ public class CotIngestStream {
 
         // Store KTables as kafka topics (changelog stream)
 
-        airQualityKeyedStream.to("raw-" + finalMetricId.replace("::", "."), Produced.with(Serdes.String(), aQKSerde));
-        perMinAggregate.toStream().to("view-" + finalMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-min", Produced.with(Serdes.String(), aggSerde));
-        perHourAggregate.toStream().to("view-" + finalMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-hour", Produced.with(Serdes.String(), aggSerde));
-        perDayAggregate.toStream().to("view-" + finalMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-day", Produced.with(Serdes.String(), aggSerde));
-        perMonthAggregate.toStream().to("view-" + finalMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-month", Produced.with(Serdes.String(), aggSerde));
-        perYearAggregate.toStream().to("view-" + finalMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-year", Produced.with(Serdes.String(), aggSerde));
+        airQualityKeyedStream.to("raw-" + aQMetricId.replace("::", "."), Produced.with(Serdes.String(), aQKSerde));
+        perMinAggregate.toStream().to("view-" + aQMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-min", Produced.with(Serdes.String(), aggSerde));
+        perHourAggregate.toStream().to("view-" + aQMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-hour", Produced.with(Serdes.String(), aggSerde));
+        perDayAggregate.toStream().to("view-" + aQMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-day", Produced.with(Serdes.String(), aggSerde));
+        perMonthAggregate.toStream().to("view-" + aQMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-month", Produced.with(Serdes.String(), aggSerde));
+        perYearAggregate.toStream().to("view-" + aQMetricId.replace("::", ".") + "-gh" + geohashPrecision + "-year", Produced.with(Serdes.String(), aggSerde));
 
-        final Topology topology = builder.build();
+        Topology topology = builder.build();
         System.out.println(topology.describe());
-
-        final KafkaStreams streams = new KafkaStreams(topology, props);
-        final CountDownLatch latch = new CountDownLatch(1);
-
-        // attach shutdown handler to catch control-c
-        Runtime.getRuntime().addShutdownHook(new Thread("streams-shutdown-hook") {
-            @Override
-            public void run() {
-                streams.close();
-                latch.countDown();
-            }
-        });
-
-        try {
-            if(cleanup) {
-                streams.cleanUp();
-            }
-            streams.start();
-            latch.await();
-        } catch (Throwable e) {
-            System.exit(1);
-        }
-        System.exit(0);
+        return topology;
     }
 }
