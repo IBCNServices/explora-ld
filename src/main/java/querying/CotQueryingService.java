@@ -1,6 +1,7 @@
 package querying;
 
 import model.AggregateValueTuple;
+import model.ErrorMessage;
 import org.apache.kafka.common.serialization.LongSerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.KafkaStreams;
@@ -8,6 +9,7 @@ import org.apache.kafka.streams.state.HostInfo;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.glassfish.jersey.internal.Errors;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
 import util.AppConfig;
@@ -74,29 +76,41 @@ public class CotQueryingService {
             radius = Double.parseDouble(qParams.getQueryParameters().getOrDefault("r", Collections.singletonList("-1")).get(0));
         } catch (NumberFormatException e) {
             e.printStackTrace();
-            throw new WebApplicationException(Response.Status.BAD_REQUEST);
+            Response errorResp = Response.status(Response.Status.BAD_REQUEST)
+                    .entity(new ErrorMessage(e.getMessage(), 400))
+                    .build();
+            throw new WebApplicationException(errorResp);
         }
 
         // if the specified geohash precision operation is not yet supported => 400 Bad Request
         if(!AppConfig.SUPPORTED_GH_PRECISION.contains(geohashPrecision)) {
+            Response errorResp = Response.status(Response.Status.BAD_REQUEST)
+                    .entity(new ErrorMessage(String.format("[queryAirQuality] geohash precision %s is not yet supported", geohashPrecision), 400))
+                    .build();
             System.out.println(String.format("[queryAirQuality] geohash precision %s is not yet supported", geohashPrecision));
-            throw new WebApplicationException(Response.Status.BAD_REQUEST);
+            throw new WebApplicationException(errorResp);
         }
 
         if (!geohashes.equals("")) {
             if (!(resolution.isEmpty()) && AppConfig.SUPPORTED_RESOLUTIONS.contains(resolution)){
-                System.out.println("[query_airquality] query with spatial predicate...");
+                System.out.println("[queryAirQuality] query with spatial predicate...");
             } else if (!(interval.isEmpty()) && AppConfig.SUPPORTED_INTERVALS.contains(interval)){
-                System.out.println("[query_airquality] query with spatial and time predicates...");
+                System.out.println("[queryAirQuality] query with spatial and time predicates...");
             } else {
-                System.out.println(String.format("[queryAirQuality] resolution %1$s or interval %2$s are not valid values", resolution, interval));
-                throw new WebApplicationException(Response.Status.BAD_REQUEST);
+                Response errorResp = Response.status(Response.Status.BAD_REQUEST)
+                        .entity(new ErrorMessage(String.format("[queryAirQuality] Invalid values for resolution (%1$s) or interval (%2$s)", resolution, interval), 400))
+                        .build();
+                System.out.println(String.format("[queryAirQuality] Invalid values for resolution (%1$s) or interval (%2$s)", resolution, interval));
+                throw new WebApplicationException(errorResp);
             }
         } else if (snap_ts != -1){
-            System.out.println("[query_airquality] query with time predicate...");
+            System.out.println("[queryAirQuality] query with time predicate...");
         } else {
+            Response errorResp = Response.status(Response.Status.BAD_REQUEST)
+                    .entity(new ErrorMessage("[queryAirQuality] Query parameters are not valid", 400))
+                    .build();
             System.out.println("[queryAirQuality] Query parameters are not valid");
-            throw new WebApplicationException(Response.Status.BAD_REQUEST);
+            throw new WebApplicationException(errorResp);
         }
 
         // The genre might be hosted on another instance. We need to find which instance it is on
