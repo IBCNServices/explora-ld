@@ -24,8 +24,10 @@ ENV READINGS_TOPIC cot.airquality
 ENV APP_NAME cot-aq-ingestion
 ENV KBROKERS 10.10.139.32:9092
 ENV GEOHASH_PRECISION 6
-ENV REST_ENDPOINT_HOSTNAME localhost
+ENV REST_ENDPOINT_HOSTNAME 0.0.0.0
 ENV REST_ENDPOINT_PORT 7070
+
+EXPOSE $REST_ENDPOINT_PORT
 
 COPY --from=build /usr/local/service/target/cot-aqa-kafka-0.1-jar-with-dependencies.jar /usr/local/service/cot-aqa-kafka-0.1-jar-with-dependencies.jar
 
