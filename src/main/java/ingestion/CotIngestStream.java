@@ -22,6 +22,7 @@ import model.AirQualityReading;
 import org.apache.kafka.streams.*;
 import org.apache.kafka.streams.state.HostInfo;
 import querying.CotQueryingService;
+import util.TSExtractor;
 import util.serdes.JsonPOJODeserializer;
 import util.serdes.JsonPOJOSerializer;
 import org.apache.commons.cli.*;
@@ -49,7 +50,7 @@ public class CotIngestStream {
     public static final int REST_ENDPOINT_PORT = System.getenv("REST_ENDPOINT_PORT") != null ? Integer.parseInt(System.getenv("REST_ENDPOINT_PORT")) : 7070;
     public static final int GEOHASH_PRECISION = System.getenv("GEOHASH_PRECISION") != null ? Integer.parseInt(System.getenv("GEOHASH_PRECISION")) : 6;
 
-    public static AggregateValueTuple airQReadingAggregator(String key, AirQualityReading value, AggregateValueTuple aggregate) {
+    private static AggregateValueTuple airQReadingAggregator(String key, AirQualityReading value, AggregateValueTuple aggregate) {
         aggregate.gh_ts = key;
         aggregate.gh = key.split("#")[0];
         aggregate.ts = Long.valueOf(key.split("#")[1]);
@@ -168,6 +169,7 @@ public class CotIngestStream {
         props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
         props.put(StreamsConfig.APPLICATION_SERVER_CONFIG, REST_ENDPOINT_HOSTNAME + ":" + REST_ENDPOINT_PORT);
         props.put(StreamsConfig.STATE_DIR_CONFIG, stateDir);
+        props.put(StreamsConfig.DEFAULT_TIMESTAMP_EXTRACTOR_CLASS_CONFIG, TSExtractor.class);
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         return props;
     }
@@ -294,6 +296,7 @@ public class CotIngestStream {
         );*/
 
         assert aQMetricId != null;
+
         KTable<String, AggregateValueTuple> perMinAggregate = perMinKeyedStream.aggregate(
                 () -> new AggregateValueTuple("", "", 0L, 0L, 0.0, 0.0),
                 (key, value, aggregate) -> airQReadingAggregator(key, value, aggregate),
