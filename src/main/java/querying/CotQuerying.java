@@ -56,7 +56,7 @@ public class CotQuerying {
             }
             results.addAll(aggregateReadings);
         }
-
+        return results;
     }
 
     public List<AggregateValueTuple> getLocalAggregates4Range(String storeName, String geohashPrefix, Long from, Long to) {
