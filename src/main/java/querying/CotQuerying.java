@@ -1,90 +1,76 @@
 package querying;
 
-import org.apache.commons.cli.*;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.common.serialization.Serdes;
-import org.apache.kafka.streams.KafkaStreams;
+import model.AggregateValueTuple;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.KeyValue;
-import org.apache.kafka.streams.StreamsBuilder;
-import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.QueryableStoreTypes;
 import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
+import util.Aggregator;
+import util.HostStoreInfo;
 
-import java.util.Properties;
-import java.util.concurrent.CountDownLatch;
+import javax.ws.rs.core.GenericType;
+import javax.ws.rs.core.MediaType;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Stream;
 
-/* THIS CLASS IS NOT YET OPERATIONAL */
 public class CotQuerying {
-    public static final String DEFAULT_METRIC_ID = "airquality.no2::number";
-    public static final String APP_NAME = "cot-aq-ingestion-gh6";
-    public static final String KBROKERS = "10.10.139.32:9092";
-    public static final int DEFAULT_GH_PRECISION = 6;
 
-    public static void main(String[] args) {
-        boolean cleanup = false;
+    private CotQueryingService serviceInstance;
 
-        Properties props = new Properties();
-        props.put(StreamsConfig.APPLICATION_ID_CONFIG, APP_NAME);
-        props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, KBROKERS);
-        props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
-        props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
-        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+    CotQuerying(CotQueryingService serviceInstance) {
+        this.serviceInstance = serviceInstance;
+    }
 
-        // create the command line parser
-        CommandLineParser parser = new DefaultParser();
+    public List<AggregateValueTuple> solveSpatialQuery(String metricId, String aggregate, List<String> geohashes, String resolution, String source, int geohashPrecision) {
+        System.out.println("[solveSpatialQuery] method call");
+        final List<AggregateValueTuple> results = new ArrayList<>();
+        Aggregator aggCollect= (Aggregator) geohashes.stream()
+                .flatMap(gh -> Stream.of(getAggregates4Geohash(metricId, aggregate, gh, resolution, source, geohashPrecision)))
+                .collect(Aggregator::new, Aggregator::accept, Aggregator::combine);
 
-        // create the Options
-        Options options = new Options();
-        options.addOption( "cl", "cleanup", false, "Should a cleanup be performed before staring. Defaults to false" );
+        return results;
+    }
 
-        try {
-            // parse the command line arguments
-            CommandLine line = parser.parse( options, args );
-            if( line.hasOption( "cleanup" ) ) {
-                cleanup = true;
+    public List<AggregateValueTuple> getAggregates4Geohash(String metricId, String aggregate, String geohash, String resolution, String source, int geohashPrecision) {
+        final List<AggregateValueTuple> results = new ArrayList<>();
+        final String viewStoreName = source == "tiles" ? "view-" + metricId.replace("::", ".") + "-gh" + geohashPrecision + "-" + resolution
+                : "raw-" + metricId.replace("::", ".");
+        final List<HostStoreInfo> hosts = serviceInstance.getMetadataService().streamsMetadataForStore(viewStoreName);
+        System.out.println(hosts);
+        for(HostStoreInfo host: hosts) {
+            List<AggregateValueTuple> aggregateReadings = new ArrayList<>();
+            if (!serviceInstance.thisHost(host)) {
+                aggregateReadings = serviceInstance.getClient().target(String.format("http://%s:%d/api/airquality/%s/aggregate/%s",
+                        host.getHost(),
+                        host.getPort(),
+                        metricId,
+                        aggregate))
+                        .request(MediaType.APPLICATION_JSON_TYPE)
+                        .get(new GenericType<List<AggregateValueTuple>>() {
+                        });
+            } else {
+                // look in the local store
+                aggregateReadings = getLocalAggregates4Range(viewStoreName, geohash, null, null);
             }
-        }
-        catch( Exception exp ) {
-            HelpFormatter formatter = new HelpFormatter();
-            formatter.printHelp("CotIngestStream", exp.getMessage(), options,null, true);
+            results.addAll(aggregateReadings);
         }
 
-        final StreamsBuilder builder = new StreamsBuilder();
+    }
 
-        final KafkaStreams streams = new KafkaStreams(builder.build(), props);
-        final CountDownLatch latch = new CountDownLatch(1);
-
-        // attach shutdown handler to catch control-c
-        Runtime.getRuntime().addShutdownHook(new Thread("streams-shutdown-hook") {
-            @Override
-            public void run() {
-                streams.close();
-                latch.countDown();
-            }
-        });
-
-        try {
-            if(cleanup) {
-                streams.cleanUp();
-            }
-            streams.start();
-            latch.await();
-        } catch (Throwable e) {
-            System.exit(1);
+    public List<AggregateValueTuple> getLocalAggregates4Range(String storeName, String geohashPrefix, Long from, Long to) {
+        final ReadOnlyKeyValueStore<String, AggregateValueTuple> viewStore = serviceInstance.getStreams().store(storeName,
+                QueryableStoreTypes.keyValueStore());
+        final String fromK = geohashPrefix + "#" + (from != null ? String.valueOf(from) : "");
+        final String toK = geohashPrefix + "#" + (to != null ? String.valueOf(to) : String.valueOf(System.currentTimeMillis()));
+        List<AggregateValueTuple> aggregateReadings = new ArrayList<>();
+        KeyValueIterator<String, AggregateValueTuple> iterator =  viewStore.range(fromK, toK);
+        while (iterator.hasNext()) {
+            KeyValue<String, AggregateValueTuple> aggReading = iterator.next();
+            System.out.println("Aggregate for " + aggReading.key + ": " + aggReading.value);
+            aggregateReadings.add(aggReading.value);
         }
-
-        ReadOnlyKeyValueStore<String,String> keyValueStore =
-                streams.store("view-airquality.no2.number-gh6-day", QueryableStoreTypes.keyValueStore());
-
-        final KeyValueIterator<String,String> range = keyValueStore.all();
-
-        while(range.hasNext()){
-            KeyValue<String,String> next = range.next();
-            System.out.println(String.format("key: %s | value: %s", next.key,next.value));
-
-        }
-
-        System.exit(0);
+        return aggregateReadings;
     }
 }

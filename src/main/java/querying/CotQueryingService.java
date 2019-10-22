@@ -38,13 +38,30 @@ public class CotQueryingService {
     private Server jettyServer;
     private final LongSerializer serializer = new LongSerializer();
     private static final Logger log = LoggerFactory.getLogger(CotQueryingService.class);
+    private final CotQuerying controller;
 
     public CotQueryingService(final KafkaStreams streams, final HostInfo hostInfo) {
         this.streams = streams;
         this.metadataService = new MetadataService(streams);
         this.hostInfo = hostInfo;
+        this.controller = new CotQuerying(this);
     }
 
+    public KafkaStreams getStreams() {
+        return streams;
+    }
+
+    public MetadataService getMetadataService() {
+        return metadataService;
+    }
+
+    public HostInfo getHostInfo() {
+        return hostInfo;
+    }
+
+    public Client getClient() {
+        return client;
+    }
 
     @GET
     @Path("/airquality/{metricId}/aggregate/{aggregate}")
@@ -67,13 +84,11 @@ public class CotQueryingService {
         String interval = qParams.getQueryParameters().getOrDefault("interval", Collections.singletonList("")).get(0).toLowerCase();
         int geohashPrecision;
         long fromDate, toDate, snap_ts;
-        double radius;
         try {
             geohashPrecision = Integer.parseInt(qParams.getQueryParameters().getOrDefault("gh_precision", Collections.singletonList("6")).get(0));
             fromDate = Long.parseLong(qParams.getQueryParameters().getOrDefault("from", Collections.singletonList("-1")).get(0));
             toDate = Long.parseLong(qParams.getQueryParameters().getOrDefault("to", Collections.singletonList("-1")).get(0));
             snap_ts = Long.parseLong(qParams.getQueryParameters().getOrDefault("ts", Collections.singletonList("-1")).get(0));
-            radius = Double.parseDouble(qParams.getQueryParameters().getOrDefault("r", Collections.singletonList("-1")).get(0));
         } catch (NumberFormatException e) {
             e.printStackTrace();
             Response errorResp = Response.status(Response.Status.BAD_REQUEST)
@@ -94,6 +109,7 @@ public class CotQueryingService {
         if (!geohashes.equals("")) {
             if (!(resolution.isEmpty()) && AppConfig.SUPPORTED_RESOLUTIONS.contains(resolution)){
                 System.out.println("[queryAirQuality] query with spatial predicate...");
+                return controller.solveSpatialQuery(metricId, aggregate, Arrays.asList(geohashes.split(",")), resolution, source, geohashPrecision);
             } else if (!(interval.isEmpty()) && AppConfig.SUPPORTED_INTERVALS.contains(interval)){
                 System.out.println("[queryAirQuality] query with spatial and time predicates...");
             } else {
@@ -131,7 +147,7 @@ public class CotQueryingService {
 
     }
 
-    private boolean thisHost(final HostStoreInfo host) {
+    public boolean thisHost(final HostStoreInfo host) {
         return host.getHost().equals(hostInfo.host()) &&
                 host.getPort() == hostInfo.port();
     }

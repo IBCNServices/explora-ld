@@ -1,5 +1,6 @@
 package util;
 
+import model.AggregateValueTuple;
 import org.apache.commons.lang3.time.DateUtils;
 
 import java.util.Calendar;
@@ -14,5 +15,9 @@ public class Sandbox {
         System.out.println("Month rounded timestamp: " + DateUtils.truncate(readingDate, Calendar.MONTH).getTime());
         System.out.println("Year rounded timestamp: " + DateUtils.truncate(readingDate, Calendar.YEAR).getTime());
         //return reading.getGeohash().substring(0, GH_PRECISION) + "#" + reading.getTimestamp();
+
+        // AggregateValueTuple and Aggregate
+        AggregateValueTuple avt = new AggregateValueTuple();
+        System.out.println(avt.toString());
     }
 }
