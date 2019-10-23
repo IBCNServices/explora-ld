@@ -1,10 +1,14 @@
 package util;
 
+import model.Aggregate;
 import model.AggregateValueTuple;
 import org.apache.commons.lang3.time.DateUtils;
 
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.Stream;
 
 public class Sandbox {
     public static void main(String[] args) {
@@ -19,5 +23,26 @@ public class Sandbox {
         // AggregateValueTuple and Aggregate
         AggregateValueTuple avt = new AggregateValueTuple();
         System.out.println(avt.toString());
+
+        Aggregate agg = new Aggregate((long) 0,0.0,0.0);
+        try {
+            System.out.println(agg.getClass().getField("avg").get(agg));
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            e.printStackTrace();
+        }
+
+        // Stream.of(HashMap)
+        HashMap<String,String> hm = new HashMap<>();
+
+        hm.put("Cricket", "Sachin");
+        hm.put("Football", "Zidane");
+        hm.put("Tennis", "Federer");
+
+        for (Map.Entry e : hm.entrySet()) {
+            System.out.println(e);
+        }
+
+        hm.entrySet().stream()
+                .forEach(System.out::println);
     }
 }

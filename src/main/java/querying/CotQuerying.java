@@ -1,7 +1,7 @@
 package querying;
 
+import model.Aggregate;
 import model.AggregateValueTuple;
-import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.QueryableStoreTypes;
@@ -11,9 +11,9 @@ import util.HostStoreInfo;
 
 import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.MediaType;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
+import java.util.Map;
+import java.util.TreeMap;
 
 public class CotQuerying {
 
@@ -23,53 +23,64 @@ public class CotQuerying {
         this.serviceInstance = serviceInstance;
     }
 
-    public List<AggregateValueTuple> solveSpatialQuery(String metricId, String aggregate, List<String> geohashes, String resolution, String source, int geohashPrecision) {
+    public Map<Long, Aggregate> solveSpatialQuery(String metricId, String aggregate, List<String> geohashes, String resolution, String source, int geohashPrecision, Boolean local) {
         System.out.println("[solveSpatialQuery] method call");
-        final List<AggregateValueTuple> results = new ArrayList<>();
-        Aggregator aggCollect= (Aggregator) geohashes.stream()
-                .flatMap(gh -> Stream.of(getAggregates4Geohash(metricId, aggregate, gh, resolution, source, geohashPrecision)))
-                .collect(Aggregator::new, Aggregator::accept, Aggregator::combine);
-
-        return results;
-    }
-
-    public List<AggregateValueTuple> getAggregates4Geohash(String metricId, String aggregate, String geohash, String resolution, String source, int geohashPrecision) {
-        final List<AggregateValueTuple> results = new ArrayList<>();
-        final String viewStoreName = source == "tiles" ? "view-" + metricId.replace("::", ".") + "-gh" + geohashPrecision + "-" + resolution
+        final String viewStoreName = source.equals("tiles") ? "view-" + metricId.replace("::", ".") + "-gh" + geohashPrecision + "-" + resolution
                 : "raw-" + metricId.replace("::", ".");
-        final List<HostStoreInfo> hosts = serviceInstance.getMetadataService().streamsMetadataForStore(viewStoreName);
-        System.out.println(hosts);
-        for(HostStoreInfo host: hosts) {
-            List<AggregateValueTuple> aggregateReadings = new ArrayList<>();
-            if (!serviceInstance.thisHost(host)) {
-                aggregateReadings = serviceInstance.getClient().target(String.format("http://%s:%d/api/airquality/%s/aggregate/%s",
-                        host.getHost(),
-                        host.getPort(),
-                        metricId,
-                        aggregate))
-                        .request(MediaType.APPLICATION_JSON_TYPE)
-                        .get(new GenericType<List<AggregateValueTuple>>() {
-                        });
-            } else {
-                // look in the local store
-                aggregateReadings = getLocalAggregates4Range(viewStoreName, geohash, null, null);
-            }
-            results.addAll(aggregateReadings);
+        if (local) {
+            Aggregator aggCollect = geohashes.stream()
+                    .map(gh -> getLocalAggregates4Range(viewStoreName, gh, null, null))
+                    .collect(Aggregator::new, Aggregator::accept, Aggregator::combine);
+            return aggCollect.getAggregateMap();
+        } else {
+            final List<HostStoreInfo> hosts = serviceInstance.getMetadataService().streamsMetadataForStore(viewStoreName);
+            System.out.println(hosts);
+            Aggregator aggCollect = hosts.stream()
+                    .map(host -> getAllAggregates4GeohashList(host, viewStoreName, metricId, aggregate, geohashes, resolution, source, geohashPrecision))
+                    .collect(Aggregator::new, Aggregator::accept, Aggregator::combine);
+            return aggCollect.getAggregateMap();
         }
-        return results;
     }
 
-    public List<AggregateValueTuple> getLocalAggregates4Range(String storeName, String geohashPrefix, Long from, Long to) {
+    public Map<Long, Aggregate> getAllAggregates4GeohashList(HostStoreInfo host, String viewStoreName, String metricId, String aggregate, List<String> geohashes, String resolution, String source, int geohashPrecision) {
+        System.out.println(geohashes);
+        Map<Long, Aggregate> aggregateReadings = new TreeMap<>();
+        if (!serviceInstance.thisHost(host)) {
+            return serviceInstance.getClient().target(String.format("http://%s:%d/api/airquality/%s/aggregate/%s",
+                    host.getHost(),
+                    host.getPort(),
+                    metricId,
+                    aggregate))
+                    .queryParam("geohashes", String.join(",", geohashes))
+                    .queryParam("src", source)
+                    .queryParam("res", resolution)
+                    .queryParam("gh_precision", geohashPrecision)
+                    .queryParam("local", true)
+                    .request(MediaType.APPLICATION_JSON_TYPE)
+                    .get(new GenericType<Map<Long, Aggregate>>() {
+                    });
+        } else {
+            // look in the local store
+            Aggregator aggCollect = geohashes.stream()
+                    .map(gh -> getLocalAggregates4Range(viewStoreName, gh, null, null))
+                    .collect(Aggregator::new, Aggregator::accept, Aggregator::combine);
+            return aggCollect.getAggregateMap();
+        }
+    }
+
+    public Map<Long, Aggregate> getLocalAggregates4Range(String storeName, String geohashPrefix, Long from, Long to) {
         final ReadOnlyKeyValueStore<String, AggregateValueTuple> viewStore = serviceInstance.getStreams().store(storeName,
                 QueryableStoreTypes.keyValueStore());
         final String fromK = geohashPrefix + "#" + (from != null ? String.valueOf(from) : "");
         final String toK = geohashPrefix + "#" + (to != null ? String.valueOf(to) : String.valueOf(System.currentTimeMillis()));
-        List<AggregateValueTuple> aggregateReadings = new ArrayList<>();
+        Map<Long, Aggregate> aggregateReadings = new TreeMap<>();
         KeyValueIterator<String, AggregateValueTuple> iterator =  viewStore.range(fromK, toK);
         while (iterator.hasNext()) {
-            KeyValue<String, AggregateValueTuple> aggReading = iterator.next();
-            System.out.println("Aggregate for " + aggReading.key + ": " + aggReading.value);
-            aggregateReadings.add(aggReading.value);
+            KeyValue<String, AggregateValueTuple> aggFromStore = iterator.next();
+            System.out.println("Aggregate for " + aggFromStore.key + ": " + aggFromStore.value);
+            Aggregate agg = new Aggregate(aggFromStore.value.count, aggFromStore.value.sum, aggFromStore.value.avg);
+            aggregateReadings.merge(aggFromStore.value.ts, agg,
+                    (a1, a2) -> new Aggregate(a1.count + a2.count, a1.sum + a2.sum, (a1.sum + a2.sum)/(a1.count + a2.count)));
         }
         return aggregateReadings;
     }

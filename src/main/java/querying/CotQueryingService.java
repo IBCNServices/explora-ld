@@ -1,15 +1,13 @@
 package querying;
 
-import model.AggregateValueTuple;
+import model.Aggregate;
 import model.ErrorMessage;
 import org.apache.kafka.common.serialization.LongSerializer;
-import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.state.HostInfo;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
-import org.glassfish.jersey.internal.Errors;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
 import util.AppConfig;
@@ -25,9 +23,7 @@ import javax.ws.rs.*;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.core.*;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 @Path("api")
 public class CotQueryingService {
@@ -66,7 +62,7 @@ public class CotQueryingService {
     @GET
     @Path("/airquality/{metricId}/aggregate/{aggregate}")
     @Produces(MediaType.APPLICATION_JSON)
-    public List<AggregateValueTuple> queryAirQuality(
+    public Map<Long, Object> queryAirQuality(
             @PathParam("metricId") final String metricId,
             @PathParam("aggregate") final String aggregate,
             @Context final UriInfo qParams) {
@@ -74,14 +70,18 @@ public class CotQueryingService {
         // if the specified aggregate operation is not yet supported => 400 Bad Request
         String aggr_op = aggregate.toLowerCase();
         if(!AppConfig.SUPPORTED_AGGR.contains(aggr_op)) {
+            Response errorResp = Response.status(Response.Status.BAD_REQUEST)
+                    .entity(new ErrorMessage(String.format("[queryAirQuality] aggregate %s is not yet supported", aggregate), 400))
+                    .build();
             System.out.println(String.format("[queryAirQuality] aggregate %s is not yet supported", aggregate));
-            throw new WebApplicationException(Response.Status.BAD_REQUEST);
+            throw new WebApplicationException(errorResp);
         }
 
         String geohashes = qParams.getQueryParameters().getOrDefault("geohashes", Collections.singletonList("")).get(0).toLowerCase();
         String source = qParams.getQueryParameters().getOrDefault("src", Collections.singletonList("tiles")).get(0).toLowerCase();
         String resolution = qParams.getQueryParameters().getOrDefault("res", Collections.singletonList("")).get(0).toLowerCase();
         String interval = qParams.getQueryParameters().getOrDefault("interval", Collections.singletonList("")).get(0).toLowerCase();
+        Boolean local = Boolean.valueOf(qParams.getQueryParameters().getOrDefault("local", Collections.singletonList("false")).get(0).toLowerCase());
         int geohashPrecision;
         long fromDate, toDate, snap_ts;
         try {
@@ -109,7 +109,24 @@ public class CotQueryingService {
         if (!geohashes.equals("")) {
             if (!(resolution.isEmpty()) && AppConfig.SUPPORTED_RESOLUTIONS.contains(resolution)){
                 System.out.println("[queryAirQuality] query with spatial predicate...");
-                return controller.solveSpatialQuery(metricId, aggregate, Arrays.asList(geohashes.split(",")), resolution, source, geohashPrecision);
+                Map<Long, Aggregate> results = controller.solveSpatialQuery(metricId, aggregate, Arrays.asList(geohashes.split(",")), resolution, source, geohashPrecision, local);
+                if (!local) {
+                    Map<Long, Double> finalResults = new TreeMap<>();
+                    results.entrySet()
+                            .forEach(e -> {
+                                try {
+                                    finalResults.put(e.getKey(), (Double) e.getValue().getClass().getField(aggr_op).get(e.getValue()));
+                                } catch (NoSuchFieldException | IllegalAccessException ex) {
+                                    ex.printStackTrace();
+                                    Response errorResp = Response.status(Response.Status.BAD_REQUEST)
+                                            .entity(new ErrorMessage(ex.getMessage(), 400))
+                                            .build();
+                                    throw new WebApplicationException(errorResp);
+                                }
+                            });
+                    return Collections.unmodifiableMap(finalResults);
+                }
+                return Collections.unmodifiableMap(results);
             } else if (!(interval.isEmpty()) && AppConfig.SUPPORTED_INTERVALS.contains(interval)){
                 System.out.println("[queryAirQuality] query with spatial and time predicates...");
             } else {

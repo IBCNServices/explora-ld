@@ -8,14 +8,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-public class Aggregator implements Consumer<List<AggregateValueTuple>> {
+public class Aggregator implements Consumer<Map<Long, Aggregate>> {
     Map<Long, Aggregate> aggregateMap = new HashMap<>();
 
+    public Map<Long, Aggregate> getAggregateMap() {
+        return aggregateMap;
+    }
+
     @Override
-    public void accept(List<AggregateValueTuple> aggregateValueTuples) {
-        for(AggregateValueTuple avt : aggregateValueTuples) {
-            Aggregate aggregate = new Aggregate(avt.count, avt.sum, avt.avg);
-            aggregateMap.merge(avt.ts, aggregate,
+    public void accept(Map<Long, Aggregate> aggMap) {
+        for(Map.Entry entry : aggMap.entrySet()) {
+            aggregateMap.merge((Long) entry.getKey(), (Aggregate) entry.getValue(),
                     (a1, a2) -> new Aggregate(a1.count + a2.count, a1.sum + a2.sum, (a1.sum + a2.sum) / (a1.count + a2.count))
             );
         }
