@@ -4,7 +4,6 @@ import model.Aggregate;
 import model.AggregateValueTuple;
 import model.ErrorMessage;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.state.HostInfo;
@@ -16,7 +15,6 @@ import util.Aggregator;
 import util.HostStoreInfo;
 import util.MetadataService;
 
-import javax.ws.rs.NotFoundException;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
