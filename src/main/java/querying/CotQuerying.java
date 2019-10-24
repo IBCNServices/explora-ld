@@ -39,6 +39,7 @@ public class CotQuerying {
             final List<HostStoreInfo> hosts = serviceInstance.getMetadataService().streamsMetadataForStore(viewStoreName);
             System.out.println(hosts);
             Aggregator aggCollect = hosts.stream()
+                    .peek(host -> System.out.println(String.format("[solveSpatialQuery] Current host: %s:%s", host.getHost(), host.getPort())))
                     .map(host -> getAllAggregates4GeohashList(host, viewStoreName, metricId, aggregate, geohashes, resolution, source, geohashPrecision))
                     .collect(Aggregator::new, Aggregator::accept, Aggregator::combine);
             return aggCollect.getAggregateMap();

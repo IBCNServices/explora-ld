@@ -17,8 +17,8 @@ public class Aggregator implements Consumer<Map<Long, Aggregate>> {
 
     @Override
     public void accept(Map<Long, Aggregate> aggMap) {
-        for(Map.Entry entry : aggMap.entrySet()) {
-            aggregateMap.merge((Long) entry.getKey(), (Aggregate) entry.getValue(),
+        for(Map.Entry<Long, Aggregate> entry : aggMap.entrySet()) {
+            aggregateMap.merge(entry.getKey(), entry.getValue(),
                     (a1, a2) -> new Aggregate(a1.count + a2.count, a1.sum + a2.sum, (a1.sum + a2.sum) / (a1.count + a2.count))
             );
         }
