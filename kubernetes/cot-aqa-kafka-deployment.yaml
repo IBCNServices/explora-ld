@@ -22,7 +22,7 @@ metadata:
     app: cot-aqa-kafka
   name: cot-aqa-kafka
 spec:
-  replicas: 3
+  replicas: 2
   strategy: {}
   template:
     metadata:
