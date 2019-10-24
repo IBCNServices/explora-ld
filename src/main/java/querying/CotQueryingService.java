@@ -27,36 +27,13 @@ import java.util.*;
 
 @Path("api")
 public class CotQueryingService {
-    private final KafkaStreams streams;
-    private final MetadataService metadataService;
-    private final HostInfo hostInfo;
-    private final Client client = ClientBuilder.newBuilder().register(JacksonFeature.class).build();
     private Server jettyServer;
     private final LongSerializer serializer = new LongSerializer();
     private static final Logger log = LoggerFactory.getLogger(CotQueryingService.class);
     private final CotQuerying controller;
 
     public CotQueryingService(final KafkaStreams streams, final HostInfo hostInfo) {
-        this.streams = streams;
-        this.metadataService = new MetadataService(streams);
-        this.hostInfo = hostInfo;
-        this.controller = new CotQuerying(this);
-    }
-
-    public KafkaStreams getStreams() {
-        return streams;
-    }
-
-    public MetadataService getMetadataService() {
-        return metadataService;
-    }
-
-    public HostInfo getHostInfo() {
-        return hostInfo;
-    }
-
-    public Client getClient() {
-        return client;
+        this.controller = new CotQuerying(streams, hostInfo);
     }
 
     @GET
@@ -126,6 +103,8 @@ public class CotQueryingService {
 //                            });
 //                    return Collections.unmodifiableMap(finalResults);
 //                }
+                System.out.println("[queryAirQuality] sending results");
+                System.out.println(results);
                 return results;
             } else if (!(interval.isEmpty()) && AppConfig.SUPPORTED_INTERVALS.contains(interval)){
                 System.out.println("[queryAirQuality] query with spatial and time predicates...");
@@ -145,28 +124,8 @@ public class CotQueryingService {
             System.out.println("[queryAirQuality] Query parameters are not valid");
             throw new WebApplicationException(errorResp);
         }
-
-        // The genre might be hosted on another instance. We need to find which instance it is on
-        // and then perform a remote lookup if necessary.
-        final List<HostStoreInfo>
-                hosts =
-                metadataService.streamsMetadataForStore("view-" + metricId.replace("::", ".") + "-gh" + geohashPrecision + "-" + resolution);
-
-//        // genre is on another instance. call the other instance to fetch the data.
-//        if (!thisHost(host)) {
-//            return fetchSongPlayCount(host, "kafka-music/charts/genre/" + genre);
-//        }
-//
-//        // genre is on this instance
-//        return topFiveSongs(genre.toLowerCase(), KafkaMusicExample.TOP_FIVE_SONGS_BY_GENRE_STORE);
-
         return null;
 
-    }
-
-    public boolean thisHost(final HostStoreInfo host) {
-        return host.getHost().equals(hostInfo.host()) &&
-                host.getPort() == hostInfo.port();
     }
 
     /**
