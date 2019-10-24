@@ -28,11 +28,13 @@ import java.util.*;
 @Path("api")
 public class CotQueryingService {
     private Server jettyServer;
+    private final HostInfo hostInfo;
     private final LongSerializer serializer = new LongSerializer();
     private static final Logger log = LoggerFactory.getLogger(CotQueryingService.class);
     private final CotQuerying controller;
 
     public CotQueryingService(final KafkaStreams streams, final HostInfo hostInfo) {
+        this.hostInfo = hostInfo;
         this.controller = new CotQuerying(streams, hostInfo);
     }
 

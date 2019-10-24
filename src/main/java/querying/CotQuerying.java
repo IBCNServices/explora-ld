@@ -52,7 +52,7 @@ public class CotQuerying {
             return aggCollect.getAggregateMap();
         } else {
             System.out.println(String.format("[solveSpatialQuery] Answering request for GLOBAL state (addressed to host %s:%s)", hostInfo.host(), hostInfo.port()));
-            final List<HostStoreInfo> hosts = serviceInstance.getMetadataService().streamsMetadataForStore(viewStoreName);
+            final List<HostStoreInfo> hosts = metadataService.streamsMetadataForStore(viewStoreName);
             System.out.println("[solveSpatialQuery] Queryable hosts: ");
             hosts.forEach(host -> System.out.println(host.getHost() + ":" + host.getPort()));
             Aggregator aggCollect = hosts.stream()
