@@ -62,7 +62,7 @@ public class CotQueryingService {
     @GET
     @Path("/airquality/{metricId}/aggregate/{aggregate}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Map<Long, Object> queryAirQuality(
+    public Map<Long, Aggregate> queryAirQuality(
             @PathParam("metricId") final String metricId,
             @PathParam("aggregate") final String aggregate,
             @Context final UriInfo qParams) {
@@ -110,23 +110,23 @@ public class CotQueryingService {
             if (!(resolution.isEmpty()) && AppConfig.SUPPORTED_RESOLUTIONS.contains(resolution)){
                 System.out.println("[queryAirQuality] query with spatial predicate...");
                 Map<Long, Aggregate> results = controller.solveSpatialQuery(metricId, aggregate, Arrays.asList(geohashes.split(",")), resolution, source, geohashPrecision, local);
-                if (!local) {
-                    Map<Long, Double> finalResults = new TreeMap<>();
-                    results.entrySet()
-                            .forEach(e -> {
-                                try {
-                                    finalResults.put(e.getKey(), (Double) e.getValue().getClass().getField(aggr_op).get(e.getValue()));
-                                } catch (NoSuchFieldException | IllegalAccessException ex) {
-                                    ex.printStackTrace();
-                                    Response errorResp = Response.status(Response.Status.BAD_REQUEST)
-                                            .entity(new ErrorMessage(ex.getMessage(), 400))
-                                            .build();
-                                    throw new WebApplicationException(errorResp);
-                                }
-                            });
-                    return Collections.unmodifiableMap(finalResults);
-                }
-                return Collections.unmodifiableMap(results);
+//                if (!local) {
+//                    Map<Long, Double> finalResults = new TreeMap<>();
+//                    results.entrySet()
+//                            .forEach(e -> {
+//                                try {
+//                                    finalResults.put(e.getKey(), (Double) e.getValue().getClass().getField(aggr_op).get(e.getValue()));
+//                                } catch (NoSuchFieldException | IllegalAccessException ex) {
+//                                    ex.printStackTrace();
+//                                    Response errorResp = Response.status(Response.Status.BAD_REQUEST)
+//                                            .entity(new ErrorMessage(ex.getMessage(), 400))
+//                                            .build();
+//                                    throw new WebApplicationException(errorResp);
+//                                }
+//                            });
+//                    return Collections.unmodifiableMap(finalResults);
+//                }
+                return results;
             } else if (!(interval.isEmpty()) && AppConfig.SUPPORTED_INTERVALS.contains(interval)){
                 System.out.println("[queryAirQuality] query with spatial and time predicates...");
             } else {

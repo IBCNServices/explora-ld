@@ -1,6 +1,6 @@
 package model;
 
-public class Aggregate {
+public class Aggregate extends Object{
     public Long count;
     public Double sum;
     public Double avg;
