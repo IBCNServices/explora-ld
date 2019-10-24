@@ -2,6 +2,7 @@ package querying;
 
 import model.Aggregate;
 import model.AggregateValueTuple;
+import model.ErrorMessage;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.state.KeyValueIterator;
@@ -73,7 +74,10 @@ public class CotQuerying {
                 return aggregateReadings;
             } catch (Exception e) {
                 e.printStackTrace();
-                throw new WebApplicationException(Response.Status.INTERNAL_SERVER_ERROR);
+                Response errorResp = Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                        .entity(new ErrorMessage(e.getMessage(), 400))
+                        .build();
+                throw new WebApplicationException(errorResp);
             }
         } else {
             // look in the local store
