@@ -32,7 +32,6 @@ public class Sandbox {
         }
 
         // Stream.of(HashMap)
-
         HashMap<String,String> hm0 = new HashMap<>();
         hm0.put("Cricket", "Sachin");
         hm0.put("Football", "Zidane");
