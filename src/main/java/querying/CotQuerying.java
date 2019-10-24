@@ -28,14 +28,14 @@ public class CotQuerying {
         final String viewStoreName = source.equals("tiles") ? "view-" + metricId.replace("::", ".") + "-gh" + geohashPrecision + "-" + resolution
                 : "raw-" + metricId.replace("::", ".");
         if (local) {
-            System.out.println("[solveSpatialQuery] Answering request for LOCAL state");
+            System.out.println(String.format("[solveSpatialQuery] Answering request for LOCAL state (addressed to host %s:%s)", serviceInstance.getHostInfo().host(), serviceInstance.getHostInfo().port()));
             Aggregator aggCollect = geohashes.stream()
                     .map(gh -> getLocalAggregates4Range(viewStoreName, gh, null, null))
                     .collect(Aggregator::new, Aggregator::accept, Aggregator::combine);
             System.out.println("[solveSpatialQuery] aggCollect.getAggregateMap(): " +aggCollect.getAggregateMap());
             return aggCollect.getAggregateMap();
         } else {
-            System.out.println(String.format("[solveSpatialQuery] Answering request for GLOBAL state (addressed to host %s%s)", serviceInstance.getHostInfo().host(), serviceInstance.getHostInfo().port()));
+            System.out.println(String.format("[solveSpatialQuery] Answering request for GLOBAL state (addressed to host %s:%s)", serviceInstance.getHostInfo().host(), serviceInstance.getHostInfo().port()));
             final List<HostStoreInfo> hosts = serviceInstance.getMetadataService().streamsMetadataForStore(viewStoreName);
             System.out.println("[solveSpatialQuery] Queryable hosts: ");
             hosts.forEach(host -> System.out.println(host.getHost() + ":" + host.getPort()));
