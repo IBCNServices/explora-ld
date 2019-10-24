@@ -73,7 +73,7 @@ public class CotQuerying {
                 return aggregateReadings;
             } catch (Exception e) {
                 e.printStackTrace();
-                throw new WebApplicationException(Response.Status.BAD_REQUEST);
+                throw new WebApplicationException(Response.Status.INTERNAL_SERVER_ERROR);
             }
         } else {
             // look in the local store
