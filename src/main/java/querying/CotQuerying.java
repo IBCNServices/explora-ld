@@ -3,6 +3,7 @@ package querying;
 import model.Aggregate;
 import model.AggregateValueTuple;
 import model.ErrorMessage;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
@@ -84,7 +85,8 @@ public class CotQuerying {
                 System.out.println(aggregateReadings);
             } catch (Exception e) {
                 e.printStackTrace();
-                e.getCause().printStackTrace();
+                Throwable rootCause = ExceptionUtils.getRootCause(e);
+                rootCause.printStackTrace();
                 Response errorResp = Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                         .entity(new ErrorMessage(e.getMessage(), 500))
                         .build();
