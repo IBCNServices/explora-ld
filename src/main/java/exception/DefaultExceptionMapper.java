@@ -8,15 +8,13 @@ import javax.ws.rs.ext.Provider;
 import javax.ws.rs.core.Response;
 
 @Provider
-public class DefaultExceptionMapper implements ExceptionMapper<Exception> {
+public class DefaultExceptionMapper implements ExceptionMapper<Throwable> {
 
     @Override
-    public Response toResponse(Exception exception) {
+    public Response toResponse(Throwable exception) {
         exception.printStackTrace();
-//        Response errorResp = Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-//                .entity(new ErrorMessage(e.getMessage(), 400))
-//                .build();
-//        throw new WebApplicationException(errorResp);
-        return Response.serverError().entity(exception.getMessage()).build();
+        return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                .entity(new ErrorMessage(exception.getMessage(), 500))
+                .build();
     }
 }
