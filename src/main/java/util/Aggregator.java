@@ -25,8 +25,8 @@ public class Aggregator implements Consumer<Map<Long, Aggregate>> {
     }
 
     public void combine(Aggregator other) {
-        aggregateMap.forEach(
-                (ts, agg) -> other.aggregateMap.merge(ts, agg,
+        other.aggregateMap.forEach(
+                (ts, agg) -> aggregateMap.merge(ts, agg,
                         (a1, a2) -> new Aggregate(a1.count + a2.count, a1.sum + a2.sum, (a1.sum + a2.sum)/(a1.count + a2.count)))
         );
     }

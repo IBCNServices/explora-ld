@@ -32,17 +32,28 @@ public class Sandbox {
         }
 
         // Stream.of(HashMap)
-        HashMap<String,String> hm = new HashMap<>();
 
-        hm.put("Cricket", "Sachin");
-        hm.put("Football", "Zidane");
-        hm.put("Tennis", "Federer");
+        HashMap<String,String> hm0 = new HashMap<>();
+        hm0.put("Cricket", "Sachin");
+        hm0.put("Football", "Zidane");
+        hm0.put("Tennis", "Federer");
+        HashMap<String,String> hm1 = new HashMap<>();
+        hm1.put("Football", "Zidane");
+        hm1.put("Tennis", "Federer");
 
-        for (Map.Entry e : hm.entrySet()) {
-            System.out.println(e);
-        }
+        System.out.println("before merge");
 
-        hm.entrySet().stream()
+        hm0.entrySet().stream()
+                .forEach(System.out::println);
+
+        hm1.forEach(
+                (k, v) -> hm0.merge(k, v,
+                        (v1, v2) -> v1.concat(","+v2))
+        );
+
+        System.out.println("after merge");
+
+        hm0.entrySet().stream()
                 .forEach(System.out::println);
     }
 }

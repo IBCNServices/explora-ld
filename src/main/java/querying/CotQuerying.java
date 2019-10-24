@@ -37,7 +37,8 @@ public class CotQuerying {
         } else {
             System.out.println("[solveSpatialQuery] Answering request for GLOBAL state");
             final List<HostStoreInfo> hosts = serviceInstance.getMetadataService().streamsMetadataForStore(viewStoreName);
-            System.out.println(hosts);
+            System.out.println("[solveSpatialQuery] Queryable hosts: ");
+            hosts.forEach(host -> System.out.println(host.getHost() + ":" + host.getPort()));
             Aggregator aggCollect = hosts.stream()
                     .peek(host -> System.out.println(String.format("[solveSpatialQuery] Current host: %s:%s", host.getHost(), host.getPort())))
                     .map(host -> getAllAggregates4GeohashList(host, viewStoreName, metricId, aggregate, geohashes, resolution, source, geohashPrecision))
@@ -48,9 +49,8 @@ public class CotQuerying {
 
     public Map<Long, Aggregate> getAllAggregates4GeohashList(HostStoreInfo host, String viewStoreName, String metricId, String aggregate, List<String> geohashes, String resolution, String source, int geohashPrecision) {
         System.out.println(geohashes);
-        Map<Long, Aggregate> aggregateReadings = new TreeMap<>();
         if (!serviceInstance.thisHost(host)) {
-            System.out.println(String.format("[getAllAggregates4GeohashList] Forwarding request to %s", host));
+            System.out.println(String.format("[getAllAggregates4GeohashList] Forwarding request to %s:%s", host.getHost(), host.getPort()));
             return serviceInstance.getClient().target(String.format("http://%s:%d/api/airquality/%s/aggregate/%s",
                     host.getHost(),
                     host.getPort(),
