@@ -56,29 +56,21 @@ public class CotQuerying {
         System.out.println(geohashes);
         if (!serviceInstance.thisHost(host)) {
             System.out.println(String.format("[getAllAggregates4GeohashList] Forwarding request to %s:%s", host.getHost(), host.getPort()));
-            try {
-                TreeMap<Long, Aggregate> aggregateReadings = (TreeMap<Long, Aggregate>) serviceInstance.getClient().target(String.format("http://%s:%d/api/airquality/%s/aggregate/%s",
-                        host.getHost(),
-                        host.getPort(),
-                        metricId,
-                        aggregate))
-                        .queryParam("geohashes", String.join(",", geohashes))
-                        .queryParam("src", source)
-                        .queryParam("res", resolution)
-                        .queryParam("gh_precision", geohashPrecision)
-                        .queryParam("local", true)
-                        .request(MediaType.APPLICATION_JSON_TYPE)
-                        .get(new GenericType<Map<Long, Aggregate>>() {
-                        });
+            TreeMap<Long, Aggregate> aggregateReadings = (TreeMap<Long, Aggregate>) serviceInstance.getClient().target(String.format("http://%s:%d/api/airquality/%s/aggregate/%s",
+                host.getHost(),
+                host.getPort(),
+                metricId,
+                aggregate))
+                .queryParam("geohashes", String.join(",", geohashes))
+                .queryParam("src", source)
+                .queryParam("res", resolution)
+                .queryParam("gh_precision", geohashPrecision)
+                .queryParam("local", true)
+                .request(MediaType.APPLICATION_JSON_TYPE)
+                .get(new GenericType<Map<Long, Aggregate>>() {
+                });
                 System.out.println(aggregateReadings);
                 return aggregateReadings;
-            } catch (Exception e) {
-                e.printStackTrace();
-                Response errorResp = Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                        .entity(new ErrorMessage(e.getMessage(), 400))
-                        .build();
-                throw new WebApplicationException(errorResp);
-            }
         } else {
             // look in the local store
             System.out.println(String.format("[getAllAggregates4GeohashList] look in the local store (%s:%s)", host.getHost(), host.getPort()));
