@@ -88,7 +88,7 @@ public class CotQuerying {
                 Throwable rootCause = ExceptionUtils.getRootCause(e);
                 rootCause.printStackTrace();
                 Response errorResp = Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                        .entity(new ErrorMessage(e.getMessage(), 500))
+                        .entity(new ErrorMessage(rootCause.getMessage(), 500))
                         .build();
                 throw new WebApplicationException(errorResp);
             }
