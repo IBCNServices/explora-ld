@@ -2,6 +2,7 @@ package querying;
 
 import model.Aggregate;
 import model.AggregateValueTuple;
+import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.QueryableStoreTypes;
@@ -9,8 +10,11 @@ import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
 import util.Aggregator;
 import util.HostStoreInfo;
 
+import javax.ws.rs.NotFoundException;
+import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -51,21 +55,26 @@ public class CotQuerying {
         System.out.println(geohashes);
         if (!serviceInstance.thisHost(host)) {
             System.out.println(String.format("[getAllAggregates4GeohashList] Forwarding request to %s:%s", host.getHost(), host.getPort()));
-            TreeMap<Long, Aggregate> aggregateReadings = (TreeMap<Long, Aggregate>) serviceInstance.getClient().target(String.format("http://%s:%d/api/airquality/%s/aggregate/%s",
-                    host.getHost(),
-                    host.getPort(),
-                    metricId,
-                    aggregate))
-                    .queryParam("geohashes", String.join(",", geohashes))
-                    .queryParam("src", source)
-                    .queryParam("res", resolution)
-                    .queryParam("gh_precision", geohashPrecision)
-                    .queryParam("local", true)
-                    .request(MediaType.APPLICATION_JSON_TYPE)
-                    .get(new GenericType<Map<Long, Aggregate>>() {
-                    });
-            System.out.println(aggregateReadings);
-            return aggregateReadings;
+            try {
+                TreeMap<Long, Aggregate> aggregateReadings = (TreeMap<Long, Aggregate>) serviceInstance.getClient().target(String.format("http://%s:%d/api/airquality/%s/aggregate/%s",
+                        host.getHost(),
+                        host.getPort(),
+                        metricId,
+                        aggregate))
+                        .queryParam("geohashes", String.join(",", geohashes))
+                        .queryParam("src", source)
+                        .queryParam("res", resolution)
+                        .queryParam("gh_precision", geohashPrecision)
+                        .queryParam("local", true)
+                        .request(MediaType.APPLICATION_JSON_TYPE)
+                        .get(new GenericType<Map<Long, Aggregate>>() {
+                        });
+                System.out.println(aggregateReadings);
+                return aggregateReadings;
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw new WebApplicationException(Response.Status.BAD_REQUEST);
+            }
         } else {
             // look in the local store
             System.out.println(String.format("[getAllAggregates4GeohashList] look in the local store (%s:%s)", host.getHost(), host.getPort()));
