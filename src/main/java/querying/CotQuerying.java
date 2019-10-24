@@ -28,11 +28,14 @@ public class CotQuerying {
         final String viewStoreName = source.equals("tiles") ? "view-" + metricId.replace("::", ".") + "-gh" + geohashPrecision + "-" + resolution
                 : "raw-" + metricId.replace("::", ".");
         if (local) {
+            System.out.println("[solveSpatialQuery] Answering request for LOCAL state");
             Aggregator aggCollect = geohashes.stream()
                     .map(gh -> getLocalAggregates4Range(viewStoreName, gh, null, null))
                     .collect(Aggregator::new, Aggregator::accept, Aggregator::combine);
+            System.out.println(aggCollect.getAggregateMap());
             return aggCollect.getAggregateMap();
         } else {
+            System.out.println("[solveSpatialQuery] Answering request for GLOBAL state");
             final List<HostStoreInfo> hosts = serviceInstance.getMetadataService().streamsMetadataForStore(viewStoreName);
             System.out.println(hosts);
             Aggregator aggCollect = hosts.stream()
@@ -46,6 +49,7 @@ public class CotQuerying {
         System.out.println(geohashes);
         Map<Long, Aggregate> aggregateReadings = new TreeMap<>();
         if (!serviceInstance.thisHost(host)) {
+            System.out.println(String.format("[getAllAggregates4GeohashList] Forwarding request to %s", host));
             return serviceInstance.getClient().target(String.format("http://%s:%d/api/airquality/%s/aggregate/%s",
                     host.getHost(),
                     host.getPort(),
@@ -61,6 +65,7 @@ public class CotQuerying {
                     });
         } else {
             // look in the local store
+            System.out.println(String.format("[getAllAggregates4GeohashList] look in the local store (%s)", host));
             Aggregator aggCollect = geohashes.stream()
                     .map(gh -> getLocalAggregates4Range(viewStoreName, gh, null, null))
                     .collect(Aggregator::new, Aggregator::accept, Aggregator::combine);

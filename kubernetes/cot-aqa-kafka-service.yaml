@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: cot-aqa-kafka
+  labels:
+    app: cot-aqa-kafka
+spec:
+  type: LoadBalancer
+  ports:
+   - port: 7070
+     targetPort: 7070
+     nodePort: 30070
+  selector:
+   app: cot-aqa-kafka

@@ -1,0 +1,52 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cot-aqa-kafka-env
+  labels:
+    app: cot-aqa-kafka
+data:
+  METRIC_ID: 'airquality.no2::number'
+  READINGS_TOPIC: 'cot.airquality'
+  APP_NAME: 'cot-aq-ingestion'
+  KBROKERS: '10.10.139.32:9092'
+  GEOHASH_PRECISION: '6'
+  #REST_ENDPOINT_HOSTNAME: '0.0.0.0'
+  REST_ENDPOINT_PORT: '7070'
+
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: cot-aqa-kafka
+  name: cot-aqa-kafka
+spec:
+  replicas: 3
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: cot-aqa-kafka
+    spec:
+      containers:
+      - env:
+        - name: REST_ENDPOINT_HOSTNAME
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        envFrom:
+        - configMapRef:
+            name: cot-aqa-kafka-env
+        image: gitlab.ilabt.imec.be:4567/lordezan/cot-aqa-kafka:latest
+        command: ["sh"]
+        args: ["-c", "java -cp /usr/local/service/cot-aqa-kafka-0.1-jar-with-dependencies.jar ingestion.CotIngestStream --metric-id ${METRIC_ID} --geohash-precision ${GEOHASH_PRECISION} --cleanup"]
+        name: cot-aqa-kafka
+        ports:
+        - containerPort: 7070
+          name: cot-aqa-kafka
+      restartPolicy: Always
+      imagePullSecrets:
+        - name: regcred
+status: {}
