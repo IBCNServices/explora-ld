@@ -84,6 +84,7 @@ public class CotQuerying {
                 System.out.println(aggregateReadings);
             } catch (Exception e) {
                 e.printStackTrace();
+                e.getCause().printStackTrace();
                 Response errorResp = Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                         .entity(new ErrorMessage(e.getMessage(), 500))
                         .build();
