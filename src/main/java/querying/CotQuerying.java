@@ -47,7 +47,7 @@ public class CotQuerying {
             Aggregator aggCollect = geohashes.stream()
                     .map(gh -> getLocalAggregates4Range(viewStoreName, gh, null, null))
                     .collect(Aggregator::new, Aggregator::accept, Aggregator::combine);
-            System.out.println("[solveSpatialQuery] aggCollect.getAggregateMap(): " +aggCollect.getAggregateMap());
+//            System.out.println("[solveSpatialQuery] aggCollect.getAggregateMap(): " +aggCollect.getAggregateMap());
             return aggCollect.getAggregateMap();
         } else {
             System.out.println(String.format("[solveSpatialQuery] Answering request for GLOBAL state (addressed to host %s:%s)", hostInfo.host(), hostInfo.port()));
@@ -68,7 +68,7 @@ public class CotQuerying {
             TreeMap<Long, Aggregate> aggregateReadings = new TreeMap<>();
             try {
                 System.out.println(String.format("[getAllAggregates4GeohashList] Forwarding request to %s:%s", host.getHost(), host.getPort()));
-                aggregateReadings = client.target(String.format("http://%s:%d/api/airquality/%s/aggregate/%s",
+                aggregateReadings = client.target(String.format("http://%s:%d/api/airquality/%s/aggregate/%s/history",
                         host.getHost(),
                         host.getPort(),
                         metricId,
@@ -80,7 +80,7 @@ public class CotQuerying {
                         .queryParam("local", true)
                         .request(MediaType.APPLICATION_JSON_TYPE)
                         .get(new GenericType<TreeMap<Long, Aggregate>>() {});
-                System.out.println(aggregateReadings);
+//                System.out.println(aggregateReadings);
             } catch (Exception e) {
                 e.printStackTrace();
                 Throwable rootCause = ExceptionUtils.getRootCause(e);
@@ -97,7 +97,7 @@ public class CotQuerying {
             Aggregator aggCollect = geohashes.stream()
                     .map(gh -> getLocalAggregates4Range(viewStoreName, gh, null, null))
                     .collect(Aggregator::new, Aggregator::accept, Aggregator::combine);
-            System.out.println("[getAllAggregates4GeohashList] aggCollect.getAggregateMap(): " + aggCollect.getAggregateMap());
+//            System.out.println("[getAllAggregates4GeohashList] aggCollect.getAggregateMap(): " + aggCollect.getAggregateMap());
             return aggCollect.getAggregateMap();
         }
     }
