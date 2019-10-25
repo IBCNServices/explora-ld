@@ -2,6 +2,7 @@ package querying;
 
 import model.Aggregate;
 import model.ErrorMessage;
+import model.Message;
 import org.apache.kafka.common.serialization.LongSerializer;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.state.HostInfo;
@@ -17,14 +18,8 @@ import org.slf4j.LoggerFactory;
 import util.AppConfig;
 
 import javax.ws.rs.*;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.UriInfo;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Map;
-import java.util.TreeMap;
+import javax.ws.rs.core.*;
+import java.util.*;
 
 @Path("api")
 public class CotQueryingService {
@@ -42,7 +37,7 @@ public class CotQueryingService {
     @GET
     @Path("/airquality/{metricId}/aggregate/{aggregate}/history")
     @Produces(MediaType.APPLICATION_JSON)
-    public Map<Long, Object> getAirQualityHistory(
+    public Response getAirQualityHistory(
             @PathParam("metricId") final String metricId,
             @PathParam("aggregate") final String aggregate,
             @Context final UriInfo qParams) {
@@ -99,26 +94,31 @@ public class CotQueryingService {
 
         if (!(resolution.isEmpty()) && AppConfig.SUPPORTED_RESOLUTIONS.contains(resolution)){
             System.out.println("[getAirQualityHistory] query with spatial predicate...");
-            Map<Long, Aggregate> results = controller.solveSpatialQuery(metricId, aggregate, Arrays.asList(geohashes.split(",")), resolution, source, geohashPrecision, local);
+            TreeMap<Long, Aggregate> results = controller.solveSpatialQuery(metricId, aggregate, Arrays.asList(geohashes.split(",")), resolution, source, geohashPrecision, local);
             if (!local) {
-                Map<Long, Double> finalResults = new TreeMap<>();
-                results.entrySet()
-                        .forEach(e -> {
-                            try {
-                                finalResults.put(e.getKey(), (Double) e.getValue().getClass().getField(aggr_op).get(e.getValue()));
-                            } catch (NoSuchFieldException | IllegalAccessException ex) {
-                                ex.printStackTrace();
-                                Response errorResp = Response.status(Response.Status.BAD_REQUEST)
-                                        .entity(new ErrorMessage(ex.getMessage(), 400))
-                                        .build();
-                                throw new WebApplicationException(errorResp);
-                            }
-                        });
-                return Collections.unmodifiableMap(finalResults);
+//                Map<Long, Double> finalResults = new TreeMap<>();
+                List<String> columns = Arrays.asList("timestamp", aggr_op);
+                HashMap<String, String> metadata = new HashMap<>();
+                metadata.put("metric_id", metricId);
+                List data = new ArrayList();
+                results.forEach((key, value) -> {
+                    try {
+                        data.add(Arrays.asList(key, (Double) value.getClass().getField(aggr_op).get(value)));
+//                        finalResults.put(key, (Double) value.getClass().getField(aggr_op).get(value));
+                    } catch (NoSuchFieldException | IllegalAccessException ex) {
+                        ex.printStackTrace();
+                        Response errorResp = Response.status(Response.Status.BAD_REQUEST)
+                                .entity(new ErrorMessage(ex.getMessage(), 400))
+                                .build();
+                        throw new WebApplicationException(errorResp);
+                    }
+                });
+                Message respMessage = new Message(columns, data, metadata);
+                return Response.ok(respMessage).build();
             }
 //                System.out.println("[queryAirQuality] sending results");
 //                System.out.println(results);
-            return Collections.unmodifiableMap(results);
+            return Response.ok(new GenericEntity<Map<Long, Aggregate>>(results){}).build();
         } else if (!(interval.isEmpty()) && AppConfig.SUPPORTED_INTERVALS.contains(interval)){
             System.out.println("[getAirQualityHistory] query with spatial and time predicates...");
         } else {

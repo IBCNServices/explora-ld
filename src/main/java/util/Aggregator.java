@@ -5,12 +5,13 @@ import model.AggregateValueTuple;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.function.Consumer;
 
 public class Aggregator implements Consumer<Map<Long, Aggregate>> {
-    Map<Long, Aggregate> aggregateMap = new HashMap<>();
+    TreeMap<Long, Aggregate> aggregateMap = new TreeMap<>();
 
-    public Map<Long, Aggregate> getAggregateMap() {
+    public TreeMap<Long, Aggregate> getAggregateMap() {
         return aggregateMap;
     }
 

@@ -38,7 +38,7 @@ public class CotQuerying {
         this.hostInfo = hostInfo;
     }
 
-    public Map<Long, Aggregate> solveSpatialQuery(String metricId, String aggregate, List<String> geohashes, String resolution, String source, int geohashPrecision, Boolean local) {
+    public TreeMap<Long, Aggregate> solveSpatialQuery(String metricId, String aggregate, List<String> geohashes, String resolution, String source, int geohashPrecision, Boolean local) {
         System.out.println("[solveSpatialQuery] method call");
         final String viewStoreName = source.equals("tiles") ? "view-" + metricId.replace("::", ".") + "-gh" + geohashPrecision + "-" + resolution
                 : "raw-" + metricId.replace("::", ".");
