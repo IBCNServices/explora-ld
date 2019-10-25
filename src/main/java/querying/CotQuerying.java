@@ -62,6 +62,31 @@ public class CotQuerying {
         }
     }
 
+    public TreeMap<Long, Aggregate> solveSpatioTemporalQuery(String metricId, String aggregate, List<String> geohashes, String interval, long fromDate, String source, int geohashPrecision, Boolean local) {
+        System.out.println("[solveSpatialQuery] method call");
+//        final String viewStoreName = source.equals("tiles") ? "view-" + metricId.replace("::", ".") + "-gh" + geohashPrecision + "-" + resolution
+//                : "raw-" + metricId.replace("::", ".");
+//        if (local) {
+//            System.out.println(String.format("[solveSpatialQuery] Answering request for LOCAL state (addressed to host %s:%s)", hostInfo.host(), hostInfo.port()));
+//            Aggregator aggCollect = geohashes.stream()
+//                    .map(gh -> getLocalAggregates4Range(viewStoreName, gh, null, null))
+//                    .collect(Aggregator::new, Aggregator::accept, Aggregator::combine);
+////            System.out.println("[solveSpatialQuery] aggCollect.getAggregateMap(): " +aggCollect.getAggregateMap());
+//            return aggCollect.getAggregateMap();
+//        } else {
+//            System.out.println(String.format("[solveSpatialQuery] Answering request for GLOBAL state (addressed to host %s:%s)", hostInfo.host(), hostInfo.port()));
+//            final List<HostStoreInfo> hosts = metadataService.streamsMetadataForStore(viewStoreName);
+//            System.out.println("[solveSpatialQuery] Queryable hosts: ");
+//            hosts.forEach(host -> System.out.println(host.getHost() + ":" + host.getPort()));
+//            Aggregator aggCollect = hosts.stream()
+//                    .peek(host -> System.out.println(String.format("[solveSpatialQuery] Current host: %s:%s", host.getHost(), host.getPort())))
+//                    .map(host -> getAllAggregates4GeohashList(host, viewStoreName, metricId, aggregate, geohashes, resolution, source, geohashPrecision))
+//                    .collect(Aggregator::new, Aggregator::accept, Aggregator::combine);
+//            return aggCollect.getAggregateMap();
+//        }
+        return null;
+    }
+
     public Map<Long, Aggregate> getAllAggregates4GeohashList(HostStoreInfo host, String viewStoreName, String metricId, String aggregate, List<String> geohashes, String resolution, String source, int geohashPrecision) {
         System.out.println(geohashes);
         if (!thisHost(host)) {

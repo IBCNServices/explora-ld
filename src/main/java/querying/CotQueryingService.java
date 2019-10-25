@@ -95,32 +95,13 @@ public class CotQueryingService {
         if (!(resolution.isEmpty()) && AppConfig.SUPPORTED_RESOLUTIONS.contains(resolution)){
             System.out.println("[getAirQualityHistory] query with spatial predicate...");
             TreeMap<Long, Aggregate> results = controller.solveSpatialQuery(metricId, aggregate, Arrays.asList(geohashes.split(",")), resolution, source, geohashPrecision, local);
-            if (!local) {
-//                Map<Long, Double> finalResults = new TreeMap<>();
-                List<String> columns = Arrays.asList("timestamp", aggr_op);
-                HashMap<String, String> metadata = new HashMap<>();
-                metadata.put("metric_id", metricId);
-                List data = new ArrayList();
-                results.forEach((key, value) -> {
-                    try {
-                        data.add(Arrays.asList(key, (Double) value.getClass().getField(aggr_op).get(value)));
-//                        finalResults.put(key, (Double) value.getClass().getField(aggr_op).get(value));
-                    } catch (NoSuchFieldException | IllegalAccessException ex) {
-                        ex.printStackTrace();
-                        Response errorResp = Response.status(Response.Status.BAD_REQUEST)
-                                .entity(new ErrorMessage(ex.getMessage(), 400))
-                                .build();
-                        throw new WebApplicationException(errorResp);
-                    }
-                });
-                Message respMessage = new Message(columns, data, metadata);
-                return Response.ok(respMessage).build();
-            }
-//                System.out.println("[queryAirQuality] sending results");
-//                System.out.println(results);
-            return Response.ok(new GenericEntity<Map<Long, Aggregate>>(results){}).build();
+            List<String> columns = Arrays.asList("timestamp", aggr_op);
+            HashMap<String, String> metadata = new HashMap<>();
+            metadata.put("metric_id", metricId);
+            return prepareResponse(aggr_op, results, metadata, columns, local);
         } else if (!(interval.isEmpty()) && AppConfig.SUPPORTED_INTERVALS.contains(interval)){
             System.out.println("[getAirQualityHistory] query with spatial and time predicates...");
+            TreeMap<Long, Aggregate> results = controller.solveSpatioTemporalQuery(metricId, aggregate, Arrays.asList(geohashes.split(",")), interval, fromDate, source, geohashPrecision, local);
         } else {
             String errorText = String.format("[getAirQualityHistory] Invalid values for resolution (%1$s) or interval (%2$s)", resolution, interval);
             Response errorResp = Response.status(Response.Status.BAD_REQUEST)
@@ -142,7 +123,7 @@ public class CotQueryingService {
             @Context final UriInfo qParams) {
 
         // if snap_ts is not a valid timestamp => 400 Bad Request
-        Long snap_ts;
+        long snap_ts;
         try {
             snap_ts = Long.parseLong(qParams.getQueryParameters().getOrDefault("ts", Collections.singletonList("-1")).get(0));
             if (snap_ts == -1){
@@ -199,6 +180,30 @@ public class CotQueryingService {
         System.out.println("[getAirQualityHistory] query with time predicate...");
 
         return null;
+    }
+
+    private Response prepareResponse(String aggregate, Map payload, Map metadata, List<String> columns, Boolean local){
+        if (!local) {
+//                Map<Long, Double> finalResults = new TreeMap<>();
+            List data = new ArrayList();
+            payload.forEach((key, value) -> {
+                try {
+                    data.add(Arrays.asList(key, (Double) value.getClass().getField(aggregate).get(value)));
+//                        finalResults.put(key, (Double) value.getClass().getField(aggregate).get(value));
+                } catch (NoSuchFieldException | IllegalAccessException ex) {
+                    ex.printStackTrace();
+                    Response errorResp = Response.status(Response.Status.BAD_REQUEST)
+                            .entity(new ErrorMessage(ex.getMessage(), 400))
+                            .build();
+                    throw new WebApplicationException(errorResp);
+                }
+            });
+            Message respMessage = new Message(columns, data, metadata);
+            return Response.ok(respMessage).build();
+        }
+//                System.out.println("[queryAirQuality] sending results");
+//                System.out.println(results);
+        return Response.ok(new GenericEntity<Map<Long, Aggregate>>(payload){}).build();
     }
 
     /**
