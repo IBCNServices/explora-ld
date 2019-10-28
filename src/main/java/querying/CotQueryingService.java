@@ -82,6 +82,26 @@ public class CotQueryingService {
             throw new WebApplicationException(errorResp);
         }
 
+        if (fromDate > System.currentTimeMillis()) {
+            String errorText = "[getAirQualityHistory] fromDate cannot be set to a future date";
+            Response errorResp = Response.status(Response.Status.BAD_REQUEST)
+                    .entity(new ErrorMessage(errorText, 400))
+                    .build();
+            System.out.println(errorText);
+            throw new WebApplicationException(errorResp);
+        }
+
+        if (toDate > 0) {
+            if (fromDate >= toDate) {
+                String errorText = "[getAirQualityHistory] fromDate parameter should be greater than toDate";
+                Response errorResp = Response.status(Response.Status.BAD_REQUEST)
+                        .entity(new ErrorMessage(errorText, 400))
+                        .build();
+                System.out.println(errorText);
+                throw new WebApplicationException(errorResp);
+            }
+        }
+
         // if the specified geohash precision operation is not yet supported => 400 Bad Request
         if(!AppConfig.SUPPORTED_GH_PRECISION.contains(geohashPrecision)) {
             String errorText = String.format("[getAirQualityHistory] geohash precision %s is not yet supported", geohashPrecision);
@@ -92,16 +112,13 @@ public class CotQueryingService {
             throw new WebApplicationException(errorResp);
         }
 
+        TreeMap<Long, Aggregate> results;
         if (!(resolution.isEmpty()) && AppConfig.SUPPORTED_RESOLUTIONS.contains(resolution)){
             System.out.println("[getAirQualityHistory] query with spatial predicate...");
-            TreeMap<Long, Aggregate> results = controller.solveSpatialQuery(metricId, aggregate, Arrays.asList(geohashes.split(",")), resolution, source, geohashPrecision, local);
-            List<String> columns = Arrays.asList("timestamp", aggr_op);
-            HashMap<String, String> metadata = new HashMap<>();
-            metadata.put("metric_id", metricId);
-            return prepareResponse(aggr_op, results, metadata, columns, local);
+            results = controller.solveSpatialQuery(metricId, aggregate, Arrays.asList(geohashes.split(",")), resolution, fromDate, toDate, source, geohashPrecision, local);
         } else if (!(interval.isEmpty()) && AppConfig.SUPPORTED_INTERVALS.contains(interval)){
             System.out.println("[getAirQualityHistory] query with spatial and time predicates...");
-            TreeMap<Long, Aggregate> results = controller.solveSpatioTemporalQuery(metricId, aggregate, Arrays.asList(geohashes.split(",")), interval, fromDate, source, geohashPrecision, local);
+            results = controller.solveSpatioTemporalQuery(metricId, aggregate, Arrays.asList(geohashes.split(",")), interval, fromDate, source, geohashPrecision, local);
         } else {
             String errorText = String.format("[getAirQualityHistory] Invalid values for resolution (%1$s) or interval (%2$s)", resolution, interval);
             Response errorResp = Response.status(Response.Status.BAD_REQUEST)
@@ -110,8 +127,10 @@ public class CotQueryingService {
             System.out.println(errorText);
             throw new WebApplicationException(errorResp);
         }
-        return null;
-
+        List<String> columns = Arrays.asList("timestamp", aggr_op);
+        HashMap<String, String> metadata = new HashMap<>();
+        metadata.put("metric_id", metricId);
+        return prepareResponse(aggr_op, results, metadata, columns, local);
     }
 
     @GET
