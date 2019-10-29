@@ -24,6 +24,10 @@ import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -254,7 +258,7 @@ public class CotQuerying {
 
     private Long getFromDate(long toDate, String interval) {
         //"5min", "1hour", "1day", "1week", "1month", "all"
-        Calendar c = Calendar.getInstance();
+        Calendar c = Calendar.getInstance(TimeZone.getTimeZone("GMT+02:00"));
         c.setTimeInMillis(toDate);
         switch (interval) {
             case "1hour":
@@ -279,18 +283,18 @@ public class CotQuerying {
     }
 
     private Long truncateTS(Long timestamp, String resolution) {
-        Date tsDate = new Date(timestamp);
+        ZonedDateTime tsDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), ZoneId.of("Europe/Brussels"));
         switch (resolution) {
             case "min":
-                return truncate(tsDate, Calendar.MINUTE).getTime();
+                return tsDate.truncatedTo(ChronoUnit.MINUTES).toInstant().toEpochMilli();
             case "hour":
-                return truncate(tsDate, Calendar.HOUR).getTime();
+                return tsDate.truncatedTo(ChronoUnit.HOURS).toInstant().toEpochMilli();
             case "day":
-                return truncate(tsDate, Calendar.DATE).getTime();
+                return tsDate.truncatedTo(ChronoUnit.DAYS).toInstant().toEpochMilli();
             case "month":
-                return truncate(tsDate, Calendar.MONTH).getTime();
+                return tsDate.truncatedTo(ChronoUnit.MONTHS).toInstant().toEpochMilli();
             case "year":
-                return truncate(tsDate, Calendar.YEAR).getTime();
+                return tsDate.truncatedTo(ChronoUnit.YEARS).toInstant().toEpochMilli();
             default:
                 return timestamp;
         }
