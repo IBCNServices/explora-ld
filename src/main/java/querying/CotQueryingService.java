@@ -3,6 +3,7 @@ package querying;
 import model.Aggregate;
 import model.ErrorMessage;
 import model.Message;
+import org.apache.kafka.common.protocol.types.Field;
 import org.apache.kafka.common.serialization.LongSerializer;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.state.HostInfo;
@@ -20,6 +21,7 @@ import util.AppConfig;
 import javax.ws.rs.*;
 import javax.ws.rs.core.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Path("api")
 public class CotQueryingService {
@@ -115,10 +117,10 @@ public class CotQueryingService {
         TreeMap<Long, Aggregate> results;
         if (!(resolution.isEmpty()) && AppConfig.SUPPORTED_RESOLUTIONS.contains(resolution)){
             System.out.println("[getAirQualityHistory] query with spatial predicate...");
-            results = controller.solveSpatialQuery(metricId, aggregate, Arrays.asList(geohashes.split(",")), resolution, fromDate, toDate, source, geohashPrecision, local);
+            results = controller.solveSpatialQuery(metricId, aggr_op, Arrays.asList(geohashes.split(",")), resolution, fromDate, toDate, source, geohashPrecision, local);
         } else if (!(interval.isEmpty()) && AppConfig.SUPPORTED_INTERVALS.contains(interval)){
             System.out.println("[getAirQualityHistory] query with spatial and time predicates...");
-            results = controller.solveSpatioTemporalQuery(metricId, aggregate, Arrays.asList(geohashes.split(",")), interval, fromDate, source, geohashPrecision, local);
+            results = controller.solveSpatioTemporalQuery(metricId, aggr_op, Arrays.asList(geohashes.split(",")), interval, fromDate, source, geohashPrecision, local);
         } else {
             String errorText = String.format("[getAirQualityHistory] Invalid values for resolution (%1$s) or interval (%2$s)", resolution, interval);
             Response errorResp = Response.status(Response.Status.BAD_REQUEST)
@@ -130,13 +132,13 @@ public class CotQueryingService {
         List<String> columns = Arrays.asList("timestamp", aggr_op);
         HashMap<String, String> metadata = new HashMap<>();
         metadata.put("metric_id", metricId);
-        return prepareResponse(aggr_op, results, metadata, columns, local);
+        return prepareResponse(aggr_op, results, metadata, columns, local, new GenericType<Long>(){});
     }
 
     @GET
     @Path("/airquality/{metricId}/aggregate/{aggregate}/snapshot")
     @Produces(MediaType.APPLICATION_JSON)
-    public Map<String, Object> getAirQualitySnapshot(
+    public Response getAirQualitySnapshot(
             @PathParam("metricId") final String metricId,
             @PathParam("aggregate") final String aggregate,
             @Context final UriInfo qParams) {
@@ -162,6 +164,29 @@ public class CotQueryingService {
             throw new WebApplicationException(errorResp);
         }
 
+        // if no bbox have been provided => 400 Bad Request
+        String bbox = qParams.getQueryParameters().getOrDefault("bbox", Collections.singletonList("")).get(0).toLowerCase();
+        if (bbox.equals("")) {
+            String errorText = "[getAirQualitySnapshot] You need to provide a set of coordinates corresponding to a valid bounding box: (N,W,S,E)";
+            Response errorResp = Response.status(Response.Status.BAD_REQUEST)
+                    .entity(new ErrorMessage(errorText, 400))
+                    .build();
+            System.out.println(errorText);
+            throw new WebApplicationException(errorResp);
+        }
+
+        List<Double> bboxCoordinates;
+        try {
+             bboxCoordinates = Arrays.asList(bbox.split(",")).stream().map(c -> Double.parseDouble(c)).collect(Collectors.toList());
+        } catch (Exception e) {
+            e.printStackTrace();
+            String errorText = "[getAirQualitySnapshot] You need to provide valid double values for the bounding box coordinates";
+            Response errorResp = Response.status(Response.Status.BAD_REQUEST)
+                    .entity(new ErrorMessage(errorText, 400))
+                    .build();
+            throw new WebApplicationException(errorResp);
+        }
+
         // if the specified aggregate operation is not yet supported => 400 Bad Request
         String aggr_op = aggregate.toLowerCase();
         if(!AppConfig.SUPPORTED_AGGR.contains(aggr_op)) {
@@ -175,6 +200,7 @@ public class CotQueryingService {
 
         String source = qParams.getQueryParameters().getOrDefault("src", Collections.singletonList("tiles")).get(0).toLowerCase();
         String resolution = qParams.getQueryParameters().getOrDefault("res", Collections.singletonList("")).get(0).toLowerCase();
+        Boolean local = Boolean.valueOf(qParams.getQueryParameters().getOrDefault("local", Collections.singletonList("false")).get(0).toLowerCase());
         int geohashPrecision;
         try {
             geohashPrecision = Integer.parseInt(qParams.getQueryParameters().getOrDefault("gh_precision", Collections.singletonList("6")).get(0));
@@ -197,11 +223,14 @@ public class CotQueryingService {
         }
 
         System.out.println("[getAirQualityHistory] query with time predicate...");
-
-        return null;
+        TreeMap <String, Aggregate> results = controller.solveTimeQuery(metricId, aggr_op, resolution, snap_ts, source, geohashPrecision, bboxCoordinates, local);
+        List<String> columns = Arrays.asList("geohash", aggr_op);
+        HashMap<String, String> metadata = new HashMap<>();
+        metadata.put("metric_id", metricId);
+        return prepareResponse(aggr_op, results, metadata, columns, local, new GenericType<String>(){});
     }
 
-    private Response prepareResponse(String aggregate, Map payload, Map metadata, List<String> columns, Boolean local){
+    private <T> Response prepareResponse(String aggregate, Map payload, Map metadata, List<String> columns, Boolean local, GenericType<T> keyType){
         if (!local) {
 //                Map<Long, Double> finalResults = new TreeMap<>();
             List data = new ArrayList();
@@ -222,7 +251,7 @@ public class CotQueryingService {
         }
 //                System.out.println("[queryAirQuality] sending results");
 //                System.out.println(results);
-        return Response.ok(new GenericEntity<Map<Long, Aggregate>>(payload){}).build();
+        return Response.ok(new GenericEntity<Map<T, Aggregate>>(payload){}).build();
     }
 
     /**
