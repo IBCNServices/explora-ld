@@ -258,7 +258,7 @@ public class CotQuerying {
 
     private Long getFromDate(long toDate, String interval) {
         //"5min", "1hour", "1day", "1week", "1month", "all"
-        Calendar c = Calendar.getInstance(TimeZone.getTimeZone("GMT+02:00"));
+        Calendar c = Calendar.getInstance();
         c.setTimeInMillis(toDate);
         switch (interval) {
             case "1hour":
