@@ -234,9 +234,10 @@ public class CotQueryingService {
         if (!local) {
 //                Map<Long, Double> finalResults = new TreeMap<>();
             List data = new ArrayList();
+            System.out.println("[prepareResponse] Incoming payload: " + payload);
             payload.forEach((key, value) -> {
                 try {
-                    data.add(Arrays.asList(key, (Double) value.getClass().getField(aggregate).get(value)));
+                    data.add(Arrays.asList(key, value.getClass().getField(aggregate).get(value)));
 //                        finalResults.put(key, (Double) value.getClass().getField(aggregate).get(value));
                 } catch (NoSuchFieldException | IllegalAccessException ex) {
                     ex.printStackTrace();
@@ -246,6 +247,7 @@ public class CotQueryingService {
                     throw new WebApplicationException(errorResp);
                 }
             });
+            System.out.println("[prepareResponse] Outgoing data: " + data);
             Message respMessage = new Message(columns, data, metadata);
             return Response.ok(respMessage).build();
         }
