@@ -35,6 +35,12 @@ import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.streams.kstream.*;
 import org.apache.kafka.streams.state.KeyValueStore;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 
@@ -49,11 +55,12 @@ public class CotIngestStream {
     public static final String REST_ENDPOINT_HOSTNAME = System.getenv("REST_ENDPOINT_HOSTNAME") != null ? System.getenv("REST_ENDPOINT_HOSTNAME") : "localhost";
     public static final int REST_ENDPOINT_PORT = System.getenv("REST_ENDPOINT_PORT") != null ? Integer.parseInt(System.getenv("REST_ENDPOINT_PORT")) : 7070;
     public static final int GEOHASH_PRECISION = System.getenv("GEOHASH_PRECISION") != null ? Integer.parseInt(System.getenv("GEOHASH_PRECISION")) : 6;
+    public static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd:HHmmss:SSS");
 
     private static AggregateValueTuple airQReadingAggregator(String key, AirQualityReading value, AggregateValueTuple aggregate) {
         aggregate.gh_ts = key;
         aggregate.gh = key.split("#")[0];
-        aggregate.ts = Long.valueOf(key.split("#")[1]);
+        aggregate.ts = LocalDateTime.parse(key.split("#")[1], DateTimeFormatter.ofPattern("yyyyMMdd:HHmmss:SSS")).toInstant(ZoneId.systemDefault().getRules().getOffset(Instant.now())).toEpochMilli();
         aggregate.count = aggregate.count + 1;
         aggregate.sum = aggregate.sum + (Double) value.getValue();
         aggregate.avg = aggregate.sum / aggregate.count;
@@ -153,6 +160,10 @@ public class CotIngestStream {
         System.exit(0);
     }
 
+    private static String toFormattedTimestamp(Long timestamp, ZoneId zoneId) {
+        return ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), zoneId).toLocalDateTime().format(DATE_TIME_FORMATTER);
+    }
+
     private static CotQueryingService startRestProxy(final KafkaStreams streams, final HostInfo hostInfo)
             throws Exception {
         final CotQueryingService
@@ -229,7 +240,7 @@ public class CotIngestStream {
         //final int finalGeohashPrecision = geohashPrecision;
 
         KStream<String, AirQualityKeyedReading> airQualityKeyedStream = filteredStream.map(
-                (metricId, reading) -> KeyValue.pair(reading.getGeohash() + "#" + reading.getTimestamp(), new AirQualityKeyedReading(
+                (metricId, reading) -> KeyValue.pair(reading.getGeohash() + "#" + toFormattedTimestamp(reading.getTimestamp(), ZoneId.of("Europe/Brussels")), new AirQualityKeyedReading(
                         reading.getTsReceivedMs(),
                         reading.getMetricId(),
                         reading.getTimestamp(),
@@ -239,46 +250,46 @@ public class CotIngestStream {
                         reading.getElevation(),
                         reading.getValue(),
                         reading.getTimeUnit(),
-                        reading.getGeohash() + "#" + reading.getTimestamp()
+                        reading.getGeohash() + "#" + toFormattedTimestamp(reading.getTimestamp(), ZoneId.of("Europe/Brussels"))
                 ))
         );
 
         KGroupedStream<String, AirQualityReading> perMinKeyedStream = filteredStream.selectKey(
                 (metricId, reading) -> {
-                    Date readingDate = new Date(reading.getTimestamp());
-                    long minTimestamp = truncate(readingDate, Calendar.MINUTE).getTime();
+                    ZonedDateTime readingDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(reading.getTimestamp()), ZoneId.of("Europe/Brussels"));
+                    String minTimestamp = readingDate.truncatedTo(ChronoUnit.MINUTES).toLocalDateTime().format(DATE_TIME_FORMATTER);
                     return reading.getGeohash().substring(0, geohashPrecision) + "#" + minTimestamp;
                 }
         ).groupByKey();
 
         KGroupedStream<String, AirQualityReading> perHourKeyedStream = filteredStream.selectKey(
                 (metricId, reading) -> {
-                    Date readingDate = new Date(reading.getTimestamp());
-                    long hourTimestamp = truncate(readingDate, Calendar.HOUR).getTime();
+                    ZonedDateTime readingDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(reading.getTimestamp()), ZoneId.of("Europe/Brussels"));
+                    String hourTimestamp = readingDate.truncatedTo(ChronoUnit.HOURS).toLocalDateTime().format(DATE_TIME_FORMATTER);
                     return reading.getGeohash().substring(0, geohashPrecision) + "#" + hourTimestamp;
                 }
         ).groupByKey();
 
         KGroupedStream<String, AirQualityReading> perDayKeyedStream = filteredStream.selectKey(
                 (metricId, reading) -> {
-                    Date readingDate = new Date(reading.getTimestamp());
-                    long dayTimestamp = truncate(readingDate, Calendar.DATE).getTime();
+                    ZonedDateTime readingDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(reading.getTimestamp()), ZoneId.of("Europe/Brussels"));
+                    String dayTimestamp = readingDate.truncatedTo(ChronoUnit.DAYS).toLocalDateTime().format(DATE_TIME_FORMATTER);
                     return reading.getGeohash().substring(0, geohashPrecision) + "#" + dayTimestamp;
                 }
         ).groupByKey();
 
         KGroupedStream<String, AirQualityReading> perMonthKeyedStream = filteredStream.selectKey(
                 (metricId, reading) -> {
-                    Date readingDate = new Date(reading.getTimestamp());
-                    long monthTimestamp = truncate(readingDate, Calendar.MONTH).getTime();
+                    ZonedDateTime readingDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(reading.getTimestamp()), ZoneId.of("Europe/Brussels"));
+                    String monthTimestamp = readingDate.truncatedTo(ChronoUnit.DAYS).withDayOfMonth(1).toLocalDateTime().format(DATE_TIME_FORMATTER);
                     return reading.getGeohash().substring(0, geohashPrecision) + "#" + monthTimestamp;
                 }
         ).groupByKey();
 
         KGroupedStream<String, AirQualityReading> perYearKeyedStream = filteredStream.selectKey(
                 (metricId, reading) -> {
-                    Date readingDate = new Date(reading.getTimestamp());
-                    long yearTimestamp = truncate(readingDate, Calendar.YEAR).getTime();
+                    ZonedDateTime readingDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(reading.getTimestamp()), ZoneId.of("Europe/Brussels"));
+                    String yearTimestamp = readingDate.truncatedTo(ChronoUnit.DAYS).withDayOfYear(1).toLocalDateTime().format(DATE_TIME_FORMATTER);
                     return reading.getGeohash().substring(0, geohashPrecision) + "#" + yearTimestamp;
                 }
         ).groupByKey();

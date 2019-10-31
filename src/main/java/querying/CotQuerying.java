@@ -27,6 +27,7 @@ import javax.ws.rs.core.Response;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -39,6 +40,7 @@ public class CotQuerying {
     private final MetadataService metadataService;
     private final HostInfo hostInfo;
     private final Client client = ClientBuilder.newBuilder().register(JacksonFeature.class).build();
+    public static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd:HHmmss:SSS");
 
     public CotQuerying(KafkaStreams streams, HostInfo hostInfo) {
         this.streams = streams;
@@ -212,8 +214,8 @@ public class CotQuerying {
     public Map<Long, Aggregate> getLocalAggregates4Range(String storeName, String geohashPrefix, Long from, Long to) {
         final ReadOnlyKeyValueStore<String, AggregateValueTuple> viewStore = streams.store(storeName,
                 QueryableStoreTypes.keyValueStore());
-        final String fromK = geohashPrefix + "#" + (from != null ? String.valueOf(from) : "");
-        final String toK = geohashPrefix + "#" + (to != null ? String.valueOf(to) : String.valueOf(System.currentTimeMillis()));
+        final String fromK = geohashPrefix + "#" + (from != null ? toFormattedTimestamp(from, ZoneId.of("Europe/Brussels")) : "");
+        final String toK = geohashPrefix + "#" + (to != null ? toFormattedTimestamp(to, ZoneId.of("Europe/Brussels")) : toFormattedTimestamp(System.currentTimeMillis(), ZoneId.of("Europe/Brussels")));
 //        System.out.println("fromK=" + fromK);
 //        System.out.println("toK=" + toK);
         Map<Long, Aggregate> aggregateReadings = new TreeMap<>();
@@ -239,8 +241,8 @@ public class CotQuerying {
     public Map<String, Aggregate> getLocalAggregates4TimestampAndGHPrefix(String storeName, int geohashPrecision, Long ts, String geohashPrefix) {
         final ReadOnlyKeyValueStore<String, AggregateValueTuple> viewStore = streams.store(storeName,
                 QueryableStoreTypes.keyValueStore());
-        final String fromK = StringUtils.rightPad(StringUtils.truncate(geohashPrefix, geohashPrecision), geohashPrecision, "0") + "#" + ts;
-        final String toK = StringUtils.rightPad(StringUtils.truncate(geohashPrefix, geohashPrecision), geohashPrecision, "z") + "#" + ts;
+        final String fromK = StringUtils.rightPad(StringUtils.truncate(geohashPrefix, geohashPrecision), geohashPrecision, "0") + "#" + toFormattedTimestamp(ts, ZoneId.of("Europe/Brussels"));
+        final String toK = StringUtils.rightPad(StringUtils.truncate(geohashPrefix, geohashPrecision), geohashPrecision, "z") + "#" + toFormattedTimestamp(ts, ZoneId.of("Europe/Brussels"));
 //        System.out.println("fromK: " + fromK);
 //        System.out.println("toK: " + toK);
         Map<String, Aggregate> aggregateReadings = new TreeMap<>();
@@ -306,6 +308,10 @@ public class CotQuerying {
             return timestamp;
         }
 
+    }
+
+    private static String toFormattedTimestamp(Long timestamp, ZoneId zoneId) {
+        return ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), zoneId).toLocalDateTime().format(DATE_TIME_FORMATTER);
     }
 
     public boolean thisHost(final HostStoreInfo host) {
