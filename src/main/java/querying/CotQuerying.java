@@ -216,8 +216,8 @@ public class CotQuerying {
                 QueryableStoreTypes.keyValueStore());
         final String fromK = geohashPrefix + "#" + (from != null ? toFormattedTimestamp(from, ZoneId.of("Europe/Brussels")) : "");
         final String toK = geohashPrefix + "#" + (to != null ? toFormattedTimestamp(to, ZoneId.of("Europe/Brussels")) : toFormattedTimestamp(System.currentTimeMillis(), ZoneId.of("Europe/Brussels")));
-//        System.out.println("fromK=" + fromK);
-//        System.out.println("toK=" + toK);
+        System.out.println("fromK=" + fromK);
+        System.out.println("toK=" + toK);
         Map<Long, Aggregate> aggregateReadings = new TreeMap<>();
         KeyValueIterator<String, AggregateValueTuple> iterator =  viewStore.range(fromK, toK);
         while (iterator.hasNext()) {
@@ -243,8 +243,8 @@ public class CotQuerying {
                 QueryableStoreTypes.keyValueStore());
         final String fromK = StringUtils.rightPad(StringUtils.truncate(geohashPrefix, geohashPrecision), geohashPrecision, "0") + "#" + toFormattedTimestamp(ts, ZoneId.of("Europe/Brussels"));
         final String toK = StringUtils.rightPad(StringUtils.truncate(geohashPrefix, geohashPrecision), geohashPrecision, "z") + "#" + toFormattedTimestamp(ts, ZoneId.of("Europe/Brussels"));
-//        System.out.println("fromK: " + fromK);
-//        System.out.println("toK: " + toK);
+        System.out.println("fromK: " + fromK);
+        System.out.println("toK: " + toK);
         Map<String, Aggregate> aggregateReadings = new TreeMap<>();
         KeyValueIterator<String, AggregateValueTuple> iterator =  viewStore.range(fromK, toK);
         while (iterator.hasNext()) {
@@ -288,7 +288,7 @@ public class CotQuerying {
 
     private Long truncateTS(Long timestamp, String resolution) {
         try{
-            ZonedDateTime tsDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), ZoneId.of("Europe/Brussels"));
+            ZonedDateTime tsDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), ZoneId.systemDefault());
             switch (resolution) {
                 case "min":
                     return tsDate.truncatedTo(ChronoUnit.MINUTES).toInstant().toEpochMilli();
