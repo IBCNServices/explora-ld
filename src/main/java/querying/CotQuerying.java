@@ -241,8 +241,8 @@ public class CotQuerying {
                 QueryableStoreTypes.keyValueStore());
         final String fromK = StringUtils.rightPad(StringUtils.truncate(geohashPrefix, geohashPrecision), geohashPrecision, "0") + "#" + ts;
         final String toK = StringUtils.rightPad(StringUtils.truncate(geohashPrefix, geohashPrecision), geohashPrecision, "z") + "#" + ts;
-        System.out.println("fromK: " + fromK);
-        System.out.println("toK: " + toK);
+//        System.out.println("fromK: " + fromK);
+//        System.out.println("toK: " + toK);
         Map<String, Aggregate> aggregateReadings = new TreeMap<>();
         KeyValueIterator<String, AggregateValueTuple> iterator =  viewStore.range(fromK, toK);
         while (iterator.hasNext()) {
