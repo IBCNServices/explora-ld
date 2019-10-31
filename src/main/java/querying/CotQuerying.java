@@ -285,21 +285,27 @@ public class CotQuerying {
     }
 
     private Long truncateTS(Long timestamp, String resolution) {
-        ZonedDateTime tsDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), ZoneId.of("Europe/Brussels"));
-        switch (resolution) {
-            case "min":
-                return tsDate.truncatedTo(ChronoUnit.MINUTES).toInstant().toEpochMilli();
-            case "hour":
-                return tsDate.truncatedTo(ChronoUnit.HOURS).toInstant().toEpochMilli();
-            case "day":
-                return tsDate.truncatedTo(ChronoUnit.DAYS).toInstant().toEpochMilli();
-            case "month":
-                return tsDate.truncatedTo(ChronoUnit.MONTHS).toInstant().toEpochMilli();
-            case "year":
-                return tsDate.truncatedTo(ChronoUnit.YEARS).toInstant().toEpochMilli();
-            default:
-                return timestamp;
+        try{
+            ZonedDateTime tsDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), ZoneId.of("Europe/Brussels"));
+            switch (resolution) {
+                case "min":
+                    return tsDate.truncatedTo(ChronoUnit.MINUTES).toInstant().toEpochMilli();
+                case "hour":
+                    return tsDate.truncatedTo(ChronoUnit.HOURS).toInstant().toEpochMilli();
+                case "day":
+                    return tsDate.truncatedTo(ChronoUnit.DAYS).toInstant().toEpochMilli();
+                case "month":
+                    return tsDate.truncatedTo(ChronoUnit.MONTHS).toInstant().toEpochMilli();
+                case "year":
+                    return tsDate.truncatedTo(ChronoUnit.YEARS).toInstant().toEpochMilli();
+                default:
+                    return timestamp;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         }
+
     }
 
     public boolean thisHost(final HostStoreInfo host) {
