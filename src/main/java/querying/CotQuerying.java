@@ -295,15 +295,15 @@ public class CotQuerying {
                 case "day":
                     return tsDate.truncatedTo(ChronoUnit.DAYS).toInstant().toEpochMilli();
                 case "month":
-                    return tsDate.truncatedTo(ChronoUnit.MONTHS).toInstant().toEpochMilli();
+                    return tsDate.truncatedTo(ChronoUnit.DAYS).withDayOfMonth(1).toInstant().toEpochMilli();
                 case "year":
-                    return tsDate.truncatedTo(ChronoUnit.YEARS).toInstant().toEpochMilli();
+                    return tsDate.truncatedTo(ChronoUnit.DAYS).withDayOfYear(1).toInstant().toEpochMilli();
                 default:
                     return timestamp;
             }
         } catch (Exception e) {
             e.printStackTrace();
-            return null;
+            return timestamp;
         }
 
     }
