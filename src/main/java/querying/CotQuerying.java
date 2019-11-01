@@ -1,5 +1,6 @@
 package querying;
 
+import com.github.davidmoten.geo.Base32;
 import com.github.davidmoten.geo.GeoHash;
 import model.Aggregate;
 import model.AggregateValueTuple;
@@ -241,22 +242,36 @@ public class CotQuerying {
     public Map<String, Aggregate> getLocalAggregates4TimestampAndGHPrefix(String storeName, int geohashPrecision, Long ts, String geohashPrefix) {
         final ReadOnlyKeyValueStore<String, AggregateValueTuple> viewStore = streams.store(storeName,
                 QueryableStoreTypes.keyValueStore());
-        final String fromK = StringUtils.rightPad(StringUtils.truncate(geohashPrefix, geohashPrecision), geohashPrecision, "0") + "#" + toFormattedTimestamp(ts, ZoneId.systemDefault());
-        final String toK = StringUtils.rightPad(StringUtils.truncate(geohashPrefix, geohashPrecision), geohashPrecision, "z") + "#" + toFormattedTimestamp(ts, ZoneId.systemDefault());
-        System.out.println("fromK: " + fromK);
-        System.out.println("toK: " + toK);
+        String truncateGHPrefix = StringUtils.truncate(geohashPrefix, geohashPrecision);
         Map<String, Aggregate> aggregateReadings = new TreeMap<>();
-        KeyValueIterator<String, AggregateValueTuple> iterator =  viewStore.range(fromK, toK);
-        while (iterator.hasNext()) {
-            KeyValue<String, AggregateValueTuple> aggFromStore = iterator.next();
-            if(!aggFromStore.value.ts.equals(ts)) {
-                continue;
+        for (long i = 0L; i < Math.pow(32, geohashPrecision - truncateGHPrefix.length()); i++) {
+            String ghPart = geohashPrecision == truncateGHPrefix.length() ? truncateGHPrefix : truncateGHPrefix + Base32.encodeBase32(i, geohashPrecision - truncateGHPrefix.length());
+            String searchKey = ghPart + "#" + toFormattedTimestamp(ts, ZoneId.systemDefault());
+            System.out.println("[getLocalAggregates4TimestampAndGHPrefix] searchKey=" + searchKey);
+            AggregateValueTuple aggregateVT = viewStore.get(searchKey);
+            if (aggregateVT != null) {
+                System.out.println("Aggregate for " + ghPart + ": " + aggregateVT);
+                Aggregate agg = new Aggregate(aggregateVT.count, aggregateVT.sum, aggregateVT.avg);
+                aggregateReadings.merge(aggregateVT.gh, agg,
+                        (a1, a2) -> new Aggregate(a1.count + a2.count, a1.sum + a2.sum, (a1.sum + a2.sum)/(a1.count + a2.count)));
             }
-            System.out.println("Aggregate for " + aggFromStore.key + ": " + aggFromStore.value);
-            Aggregate agg = new Aggregate(aggFromStore.value.count, aggFromStore.value.sum, aggFromStore.value.avg);
-            aggregateReadings.merge(aggFromStore.value.gh, agg,
-                    (a1, a2) -> new Aggregate(a1.count + a2.count, a1.sum + a2.sum, (a1.sum + a2.sum)/(a1.count + a2.count)));
         }
+//        final String fromK = StringUtils.rightPad(StringUtils.truncate(geohashPrefix, geohashPrecision), geohashPrecision, "0") + "#" + toFormattedTimestamp(ts, ZoneId.systemDefault());
+//        final String toK = StringUtils.rightPad(StringUtils.truncate(geohashPrefix, geohashPrecision), geohashPrecision, "z") + "#" + toFormattedTimestamp(ts, ZoneId.systemDefault());
+//        System.out.println("fromK: " + fromK);
+//        System.out.println("toK: " + toK);
+//        Map<String, Aggregate> aggregateReadings = new TreeMap<>();
+//        KeyValueIterator<String, AggregateValueTuple> iterator =  viewStore.range(fromK, toK);
+//        while (iterator.hasNext()) {
+//            KeyValue<String, AggregateValueTuple> aggFromStore = iterator.next();
+//            if(!aggFromStore.value.ts.equals(ts)) {
+//                continue;
+//            }
+//            System.out.println("Aggregate for " + aggFromStore.key + ": " + aggFromStore.value);
+//            Aggregate agg = new Aggregate(aggFromStore.value.count, aggFromStore.value.sum, aggFromStore.value.avg);
+//            aggregateReadings.merge(aggFromStore.value.gh, agg,
+//                    (a1, a2) -> new Aggregate(a1.count + a2.count, a1.sum + a2.sum, (a1.sum + a2.sum)/(a1.count + a2.count)));
+//        }
         return aggregateReadings;
     }
 
