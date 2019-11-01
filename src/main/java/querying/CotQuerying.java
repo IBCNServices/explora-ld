@@ -241,8 +241,8 @@ public class CotQuerying {
     public Map<String, Aggregate> getLocalAggregates4TimestampAndGHPrefix(String storeName, int geohashPrecision, Long ts, String geohashPrefix) {
         final ReadOnlyKeyValueStore<String, AggregateValueTuple> viewStore = streams.store(storeName,
                 QueryableStoreTypes.keyValueStore());
-        final String fromK = StringUtils.rightPad(StringUtils.truncate(geohashPrefix, geohashPrecision), geohashPrecision, "0") + "#" + toFormattedTimestamp(ts, ZoneId.of("Europe/Brussels"));
-        final String toK = StringUtils.rightPad(StringUtils.truncate(geohashPrefix, geohashPrecision), geohashPrecision, "z") + "#" + toFormattedTimestamp(ts, ZoneId.of("Europe/Brussels"));
+        final String fromK = StringUtils.rightPad(StringUtils.truncate(geohashPrefix, geohashPrecision), geohashPrecision, "0") + "#" + toFormattedTimestamp(ts, ZoneId.systemDefault());
+        final String toK = StringUtils.rightPad(StringUtils.truncate(geohashPrefix, geohashPrecision), geohashPrecision, "z") + "#" + toFormattedTimestamp(ts, ZoneId.systemDefault());
         System.out.println("fromK: " + fromK);
         System.out.println("toK: " + toK);
         Map<String, Aggregate> aggregateReadings = new TreeMap<>();
