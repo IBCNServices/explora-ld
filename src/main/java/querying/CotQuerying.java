@@ -247,7 +247,7 @@ public class CotQuerying {
         for (long i = 0L; i < Math.pow(32, geohashPrecision - truncateGHPrefix.length()); i++) {
             String ghPart = geohashPrecision == truncateGHPrefix.length() ? truncateGHPrefix : truncateGHPrefix + Base32.encodeBase32(i, geohashPrecision - truncateGHPrefix.length());
             String searchKey = ghPart + "#" + toFormattedTimestamp(ts, ZoneId.systemDefault());
-            System.out.println("[getLocalAggregates4TimestampAndGHPrefix] searchKey=" + searchKey);
+//            System.out.println("[getLocalAggregates4TimestampAndGHPrefix] searchKey=" + searchKey);
             AggregateValueTuple aggregateVT = viewStore.get(searchKey);
             if (aggregateVT != null) {
                 System.out.println("Aggregate for " + ghPart + ": " + aggregateVT);
