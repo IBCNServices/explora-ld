@@ -215,8 +215,8 @@ public class CotQuerying {
     public Map<Long, Aggregate> getLocalAggregates4Range(String storeName, String geohashPrefix, Long from, Long to) {
         final ReadOnlyKeyValueStore<String, AggregateValueTuple> viewStore = streams.store(storeName,
                 QueryableStoreTypes.keyValueStore());
-        final String fromK = geohashPrefix + "#" + (from != null ? toFormattedTimestamp(from, ZoneId.of("Europe/Brussels")) : "");
-        final String toK = geohashPrefix + "#" + (to != null ? toFormattedTimestamp(to, ZoneId.of("Europe/Brussels")) : toFormattedTimestamp(System.currentTimeMillis(), ZoneId.of("Europe/Brussels")));
+        final String fromK = geohashPrefix + "#" + (from != null ? toFormattedTimestamp(from, ZoneId.systemDefault()) : "");
+        final String toK = geohashPrefix + "#" + (to != null ? toFormattedTimestamp(to, ZoneId.systemDefault()) : toFormattedTimestamp(System.currentTimeMillis(), ZoneId.systemDefault()));
         System.out.println("fromK=" + fromK);
         System.out.println("toK=" + toK);
         Map<Long, Aggregate> aggregateReadings = new TreeMap<>();
