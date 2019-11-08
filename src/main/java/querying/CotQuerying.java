@@ -114,7 +114,7 @@ public class CotQuerying {
 //            System.out.println(String.format("[solveTimeQuery] Answering request for GLOBAL state (addressed to host %s:%s)", hostInfo.host(), hostInfo.port()));
             final List<HostStoreInfo> hosts = metadataService.streamsMetadataForStore(viewStoreName);
 //            System.out.println("[solveTimeQuery] Queryable hosts: ");
-            hosts.forEach(host -> System.out.println(host.getHost() + ":" + host.getPort()));
+//            hosts.forEach(host -> System.out.println(host.getHost() + ":" + host.getPort()));
             Aggregator<String> aggCollect = hosts.stream()
 //                    .peek(host -> System.out.println(String.format("[solveTimeQuery] Current host: %s:%s", host.getHost(), host.getPort())))
                     .map(host -> getAggregates4Timestamp(host, viewStoreName, metricId, aggregate, resolution, source, ts, geohashPrecision, bbox))
@@ -166,7 +166,7 @@ public class CotQuerying {
             }
 //            System.out.println("from: " + from);
 //            System.out.println("to: " + to);
-            System.out.println(String.format("[getAggregates4GeohashList] look in the local store (%s:%s)", host.getHost(), host.getPort()));
+//            System.out.println(String.format("[getAggregates4GeohashList] look in the local store (%s:%s)", host.getHost(), host.getPort()));
             Aggregator<Long> aggCollect = geohashes.stream()
                     .map(gh -> getLocalAggregates4Range(viewStoreName, gh, from, to))
                     .collect(Aggregator<Long>::new, Aggregator<Long>::accept, Aggregator<Long>::combine);
