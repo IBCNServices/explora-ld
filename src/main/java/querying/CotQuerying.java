@@ -66,7 +66,7 @@ public class CotQuerying {
 //            System.out.println("[solveSpatialQuery] Queryable hosts: ");
 //            hosts.forEach(host -> System.out.println(host.getHost() + ":" + host.getPort()));
             Aggregator<Long> aggCollect = hosts.stream()
-                    .peek(host -> System.out.println(String.format("[solveSpatialQuery] Current host: %s:%s", host.getHost(), host.getPort())))
+//                    .peek(host -> System.out.println(String.format("[solveSpatialQuery] Current host: %s:%s", host.getHost(), host.getPort())))
                     .map(host -> getAggregates4GeohashList(host, viewStoreName, metricId, aggregate, geohashes, resolution, "", source, fromDate, toDate, geohashPrecision))
                     .collect(Aggregator<Long>::new, Aggregator<Long>::accept, Aggregator<Long>::combine);
             return aggCollect.getAggregateMap();
