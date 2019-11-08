@@ -50,21 +50,21 @@ public class CotQuerying {
     }
 
     public TreeMap<Long, Aggregate> solveSpatialQuery(String metricId, String aggregate, List<String> geohashes, String resolution, Long fromDate, Long toDate, String source, int geohashPrecision, Boolean local) {
-        System.out.println("[solveSpatialQuery] method call");
+//        System.out.println("[solveSpatialQuery] method call");
         final String viewStoreName = source.equals("tiles") ? "view-" + metricId.replace("::", ".") + "-gh" + geohashPrecision + "-" + resolution
                 : "raw-" + metricId.replace("::", ".");
         if (local) {
-            System.out.println(String.format("[solveSpatialQuery] Answering request for LOCAL state (addressed to host %s:%s)", hostInfo.host(), hostInfo.port()));
+//            System.out.println(String.format("[solveSpatialQuery] Answering request for LOCAL state (addressed to host %s:%s)", hostInfo.host(), hostInfo.port()));
             Aggregator<Long> aggCollect = geohashes.stream()
                     .map(gh -> getLocalAggregates4Range(viewStoreName, gh, fromDate <= 0 ? null : fromDate, toDate <= 0 ? null : toDate))
                     .collect(Aggregator<Long>::new, Aggregator<Long>::accept, Aggregator<Long>::combine);
 //            System.out.println("[solveSpatialQuery] aggCollect.getAggregateMap(): " +aggCollect.getAggregateMap());
             return aggCollect.getAggregateMap();
         } else {
-            System.out.println(String.format("[solveSpatialQuery] Answering request for GLOBAL state (addressed to host %s:%s)", hostInfo.host(), hostInfo.port()));
+//            System.out.println(String.format("[solveSpatialQuery] Answering request for GLOBAL state (addressed to host %s:%s)", hostInfo.host(), hostInfo.port()));
             final List<HostStoreInfo> hosts = metadataService.streamsMetadataForStore(viewStoreName);
-            System.out.println("[solveSpatialQuery] Queryable hosts: ");
-            hosts.forEach(host -> System.out.println(host.getHost() + ":" + host.getPort()));
+//            System.out.println("[solveSpatialQuery] Queryable hosts: ");
+//            hosts.forEach(host -> System.out.println(host.getHost() + ":" + host.getPort()));
             Aggregator<Long> aggCollect = hosts.stream()
                     .peek(host -> System.out.println(String.format("[solveSpatialQuery] Current host: %s:%s", host.getHost(), host.getPort())))
                     .map(host -> getAggregates4GeohashList(host, viewStoreName, metricId, aggregate, geohashes, resolution, "", source, fromDate, toDate, geohashPrecision))
@@ -74,26 +74,26 @@ public class CotQuerying {
     }
 
     public TreeMap<Long, Aggregate> solveSpatioTemporalQuery(String metricId, String aggregate, List<String> geohashes, String interval, Long fromDate, String source, int geohashPrecision, Boolean local) {
-        System.out.println("[solveSpatioTemporalQuery] method call");
+//        System.out.println("[solveSpatioTemporalQuery] method call");
         String resolution = AppConfig.TIME_RANGES.get(interval);
         final String viewStoreName = source.equals("tiles") ? "view-" + metricId.replace("::", ".") + "-gh" + geohashPrecision + "-" + resolution
                 : "raw-" + metricId.replace("::", ".");
         if (local) {
             Long to = fromDate <= 0 ? System.currentTimeMillis() : fromDate;
             Long from = getFromDate(to, interval);
-            System.out.println(String.format("[solveSpatioTemporalQuery] Answering request for LOCAL state (addressed to host %s:%s)", hostInfo.host(), hostInfo.port()));
+//            System.out.println(String.format("[solveSpatioTemporalQuery] Answering request for LOCAL state (addressed to host %s:%s)", hostInfo.host(), hostInfo.port()));
             Aggregator<Long> aggCollect = geohashes.stream()
                     .map(gh -> getLocalAggregates4Range(viewStoreName, gh, from, to))
                     .collect(Aggregator<Long>::new, Aggregator<Long>::accept, Aggregator<Long>::combine);
 //            System.out.println("[solveSpatialQuery] aggCollect.getAggregateMap(): " +aggCollect.getAggregateMap());
             return aggCollect.getAggregateMap();
         } else {
-            System.out.println(String.format("[solveSpatioTemporalQuery] Answering request for GLOBAL state (addressed to host %s:%s)", hostInfo.host(), hostInfo.port()));
+//            System.out.println(String.format("[solveSpatioTemporalQuery] Answering request for GLOBAL state (addressed to host %s:%s)", hostInfo.host(), hostInfo.port()));
             final List<HostStoreInfo> hosts = metadataService.streamsMetadataForStore(viewStoreName);
-            System.out.println("[solveSpatioTemporalQuery] Queryable hosts: ");
-            hosts.forEach(host -> System.out.println(host.getHost() + ":" + host.getPort()));
+//            System.out.println("[solveSpatioTemporalQuery] Queryable hosts: ");
+//            hosts.forEach(host -> System.out.println(host.getHost() + ":" + host.getPort()));
             Aggregator<Long> aggCollect = hosts.stream()
-                    .peek(host -> System.out.println(String.format("[solveSpatioTemporalQuery] Current host: %s:%s", host.getHost(), host.getPort())))
+//                    .peek(host -> System.out.println(String.format("[solveSpatioTemporalQuery] Current host: %s:%s", host.getHost(), host.getPort())))
                     .map(host -> getAggregates4GeohashList(host, viewStoreName, metricId, aggregate, geohashes, "", interval, source, fromDate, -1L, geohashPrecision))
                     .collect(Aggregator<Long>::new, Aggregator<Long>::accept, Aggregator<Long>::combine);
             return aggCollect.getAggregateMap();
@@ -101,22 +101,22 @@ public class CotQuerying {
     }
 
     public TreeMap<String, Aggregate> solveTimeQuery(String metricId, String aggregate, String resolution, Long timestamp, String source, int geohashPrecision, List<Double> bbox, Boolean local) {
-        System.out.println("[solveTimeQuery] method call");
+//        System.out.println("[solveTimeQuery] method call");
         Long ts = truncateTS(timestamp, resolution);
         final String viewStoreName = source.equals("tiles") ? "view-" + metricId.replace("::", ".") + "-gh" + geohashPrecision + "-" + resolution
                 : "raw-" + metricId.replace("::", ".");
         if (local) {
-            System.out.println(String.format("[solveTimeQuery] Answering request for LOCAL state (addressed to host %s:%s)", hostInfo.host(), hostInfo.port()));
+//            System.out.println(String.format("[solveTimeQuery] Answering request for LOCAL state (addressed to host %s:%s)", hostInfo.host(), hostInfo.port()));
             TreeMap<String, Aggregate> aggregateReadings = new TreeMap<>();
             aggregateReadings.putAll(getLocalAggregates4Timestamp(viewStoreName, geohashPrecision, timestamp, bbox));
             return aggregateReadings;
         } else {
-            System.out.println(String.format("[solveTimeQuery] Answering request for GLOBAL state (addressed to host %s:%s)", hostInfo.host(), hostInfo.port()));
+//            System.out.println(String.format("[solveTimeQuery] Answering request for GLOBAL state (addressed to host %s:%s)", hostInfo.host(), hostInfo.port()));
             final List<HostStoreInfo> hosts = metadataService.streamsMetadataForStore(viewStoreName);
-            System.out.println("[solveTimeQuery] Queryable hosts: ");
+//            System.out.println("[solveTimeQuery] Queryable hosts: ");
             hosts.forEach(host -> System.out.println(host.getHost() + ":" + host.getPort()));
             Aggregator<String> aggCollect = hosts.stream()
-                    .peek(host -> System.out.println(String.format("[solveTimeQuery] Current host: %s:%s", host.getHost(), host.getPort())))
+//                    .peek(host -> System.out.println(String.format("[solveTimeQuery] Current host: %s:%s", host.getHost(), host.getPort())))
                     .map(host -> getAggregates4Timestamp(host, viewStoreName, metricId, aggregate, resolution, source, ts, geohashPrecision, bbox))
                     .collect(Aggregator<String>::new, Aggregator<String>::accept, Aggregator<String>::combine);
             return aggCollect.getAggregateMap();
@@ -124,12 +124,12 @@ public class CotQuerying {
     }
 
     public Map<Long, Aggregate> getAggregates4GeohashList(HostStoreInfo host, String viewStoreName, String metricId, String aggregate, List<String> geohashes, String resolution, String interval, String source, Long fromDate, Long toDate, int geohashPrecision) {
-        System.out.println(geohashes);
+//        System.out.println(geohashes);
         String tmp_predicate_key = resolution.isEmpty() ? "interval" : "res";
         String tmp_predicate_value = resolution.isEmpty() ? interval : resolution;
         if (!thisHost(host)) {
             try {
-                System.out.println(String.format("[getAggregates4GeohashList] Forwarding request to %s:%s", host.getHost(), host.getPort()));
+//                System.out.println(String.format("[getAggregates4GeohashList] Forwarding request to %s:%s", host.getHost(), host.getPort()));
                 //                System.out.println(aggregateReadings);
                 return client.target(String.format("http://%s:%d/api/airquality/%s/aggregate/%s/history",
                         host.getHost(),
@@ -176,10 +176,10 @@ public class CotQuerying {
     }
 
     public Map<String, Aggregate> getAggregates4Timestamp(HostStoreInfo host, String viewStoreName, String metricId, String aggregate, String resolution, String source, Long timestamp, int geohashPrecision, List<Double> bbox) {
-        System.out.println(timestamp);
+//        System.out.println(timestamp);
         if (!thisHost(host)) {
             try {
-                System.out.println(String.format("[getAggregates4Timestamp] Forwarding request to %s:%s", host.getHost(), host.getPort()));
+//                System.out.println(String.format("[getAggregates4Timestamp] Forwarding request to %s:%s", host.getHost(), host.getPort()));
                 //                System.out.println(aggregateReadings);
                 return client.target(String.format("http://%s:%d/api/airquality/%s/aggregate/%s/snapshot",
                         host.getHost(),
@@ -205,7 +205,7 @@ public class CotQuerying {
             }
         } else {
             // look in the local store
-            System.out.println(String.format("[getAggregates4Timestamp] look in the local store (%s:%s)", host.getHost(), host.getPort()));
+//            System.out.println(String.format("[getAggregates4Timestamp] look in the local store (%s:%s)", host.getHost(), host.getPort()));
             TreeMap<String, Aggregate> aggregateReadings = new TreeMap<>();
             aggregateReadings.putAll(getLocalAggregates4Timestamp(viewStoreName, geohashPrecision, timestamp, bbox));
             return aggregateReadings;
@@ -217,13 +217,13 @@ public class CotQuerying {
                 QueryableStoreTypes.keyValueStore());
         final String fromK = geohashPrefix + "#" + (from != null ? toFormattedTimestamp(from, ZoneId.systemDefault()) : "");
         final String toK = geohashPrefix + "#" + (to != null ? toFormattedTimestamp(to, ZoneId.systemDefault()) : toFormattedTimestamp(System.currentTimeMillis(), ZoneId.systemDefault()));
-        System.out.println("fromK=" + fromK);
-        System.out.println("toK=" + toK);
+//        System.out.println("fromK=" + fromK);
+//        System.out.println("toK=" + toK);
         Map<Long, Aggregate> aggregateReadings = new TreeMap<>();
         KeyValueIterator<String, AggregateValueTuple> iterator =  viewStore.range(fromK, toK);
         while (iterator.hasNext()) {
             KeyValue<String, AggregateValueTuple> aggFromStore = iterator.next();
-            System.out.println("Aggregate for " + aggFromStore.key + ": " + aggFromStore.value);
+//            System.out.println("Aggregate for " + aggFromStore.key + ": " + aggFromStore.value);
             Aggregate agg = new Aggregate(aggFromStore.value.count, aggFromStore.value.sum, aggFromStore.value.avg);
             aggregateReadings.merge(aggFromStore.value.ts, agg,
                     (a1, a2) -> new Aggregate(a1.count + a2.count, a1.sum + a2.sum, (a1.sum + a2.sum)/(a1.count + a2.count)));
@@ -250,7 +250,7 @@ public class CotQuerying {
 //            System.out.println("[getLocalAggregates4TimestampAndGHPrefix] searchKey=" + searchKey);
             AggregateValueTuple aggregateVT = viewStore.get(searchKey);
             if (aggregateVT != null) {
-                System.out.println("Aggregate for " + ghPart + ": " + aggregateVT);
+//                System.out.println("Aggregate for " + ghPart + ": " + aggregateVT);
                 Aggregate agg = new Aggregate(aggregateVT.count, aggregateVT.sum, aggregateVT.avg);
                 aggregateReadings.merge(aggregateVT.gh, agg,
                         (a1, a2) -> new Aggregate(a1.count + a2.count, a1.sum + a2.sum, (a1.sum + a2.sum)/(a1.count + a2.count)));

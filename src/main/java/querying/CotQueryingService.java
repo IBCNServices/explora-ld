@@ -116,10 +116,10 @@ public class CotQueryingService {
 
         TreeMap<Long, Aggregate> results;
         if (!(resolution.isEmpty()) && AppConfig.SUPPORTED_RESOLUTIONS.contains(resolution)){
-            System.out.println("[getAirQualityHistory] query with spatial predicate...");
+//            System.out.println("[getAirQualityHistory] query with spatial predicate...");
             results = controller.solveSpatialQuery(metricId, aggr_op, Arrays.asList(geohashes.split(",")), resolution, fromDate, toDate, source, geohashPrecision, local);
         } else if (!(interval.isEmpty()) && AppConfig.SUPPORTED_INTERVALS.contains(interval)){
-            System.out.println("[getAirQualityHistory] query with spatial and time predicates...");
+//            System.out.println("[getAirQualityHistory] query with spatial and time predicates...");
             results = controller.solveSpatioTemporalQuery(metricId, aggr_op, Arrays.asList(geohashes.split(",")), interval, fromDate, source, geohashPrecision, local);
         } else {
             String errorText = String.format("[getAirQualityHistory] Invalid values for resolution (%1$s) or interval (%2$s)", resolution, interval);
@@ -222,7 +222,7 @@ public class CotQueryingService {
             throw new WebApplicationException(errorResp);
         }
 
-        System.out.println("[getAirQualityHistory] query with time predicate...");
+//        System.out.println("[getAirQualityHistory] query with time predicate...");
         TreeMap <String, Aggregate> results = controller.solveTimeQuery(metricId, aggr_op, resolution, snap_ts, source, geohashPrecision, bboxCoordinates, local);
         List<String> columns = Arrays.asList("geohash", aggr_op);
         HashMap<String, String> metadata = new HashMap<>();
