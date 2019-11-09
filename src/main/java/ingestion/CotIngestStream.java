@@ -353,11 +353,11 @@ public class CotIngestStream {
             // Store KTables as kafka topics (changelog stream)
 
 //            airQualityKeyedStream.to("raw-" + aQMetricId.replace("::", "."), Produced.with(Serdes.String(), aQKSerde));
-            perMinAggregate.toStream().to("view-" + aQMetricId.replace("::", ".") + "-gh" + gh + "-min", Produced.with(Serdes.String(), aggSerde));
-            perHourAggregate.toStream().to("view-" + aQMetricId.replace("::", ".") + "-gh" + gh + "-hour", Produced.with(Serdes.String(), aggSerde));
-            perDayAggregate.toStream().to("view-" + aQMetricId.replace("::", ".") + "-gh" + gh + "-day", Produced.with(Serdes.String(), aggSerde));
-            perMonthAggregate.toStream().to("view-" + aQMetricId.replace("::", ".") + "-gh" + gh + "-month", Produced.with(Serdes.String(), aggSerde));
-            perYearAggregate.toStream().to("view-" + aQMetricId.replace("::", ".") + "-gh" + gh + "-year", Produced.with(Serdes.String(), aggSerde));
+//            perMinAggregate.toStream().to("view-" + aQMetricId.replace("::", ".") + "-gh" + gh + "-min", Produced.with(Serdes.String(), aggSerde));
+//            perHourAggregate.toStream().to("view-" + aQMetricId.replace("::", ".") + "-gh" + gh + "-hour", Produced.with(Serdes.String(), aggSerde));
+//            perDayAggregate.toStream().to("view-" + aQMetricId.replace("::", ".") + "-gh" + gh + "-day", Produced.with(Serdes.String(), aggSerde));
+//            perMonthAggregate.toStream().to("view-" + aQMetricId.replace("::", ".") + "-gh" + gh + "-month", Produced.with(Serdes.String(), aggSerde));
+//            perYearAggregate.toStream().to("view-" + aQMetricId.replace("::", ".") + "-gh" + gh + "-year", Produced.with(Serdes.String(), aggSerde));
         });
 
         Topology topology = builder.build();
