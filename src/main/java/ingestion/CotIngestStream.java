@@ -183,6 +183,8 @@ public class CotIngestStream {
         props.put(StreamsConfig.APPLICATION_SERVER_CONFIG, REST_ENDPOINT_HOSTNAME + ":" + REST_ENDPOINT_PORT);
         props.put(StreamsConfig.STATE_DIR_CONFIG, stateDir);
         props.put(StreamsConfig.DEFAULT_TIMESTAMP_EXTRACTOR_CLASS_CONFIG, TSExtractor.class);
+        props.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 10 * 1024 * 1024L);
+        props.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, 10000);
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         return props;
     }
@@ -335,11 +337,11 @@ public class CotIngestStream {
                     Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + aQMetricId.replace("::", ".") + "-gh" + gh + "-month").withValueSerde(aggSerde)
             );
 
-            KTable<String, AggregateValueTuple> perYearAggregate = perYearKeyedStream.aggregate(
-                    () -> new AggregateValueTuple("", "", 0L, 0L, 0.0, 0.0),
-                    (key, value, aggregate) -> airQReadingAggregator(key, value, aggregate),
-                    Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + aQMetricId.replace("::", ".") + "-gh" + gh + "-year").withValueSerde(aggSerde)
-            );
+//            KTable<String, AggregateValueTuple> perYearAggregate = perYearKeyedStream.aggregate(
+//                    () -> new AggregateValueTuple("", "", 0L, 0L, 0.0, 0.0),
+//                    (key, value, aggregate) -> airQReadingAggregator(key, value, aggregate),
+//                    Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + aQMetricId.replace("::", ".") + "-gh" + gh + "-year").withValueSerde(aggSerde)
+//            );
 
             // Get streams from KTables to peek into them (to check if they are working as expected)
 
