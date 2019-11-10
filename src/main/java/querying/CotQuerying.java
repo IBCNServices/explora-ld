@@ -228,6 +228,7 @@ public class CotQuerying {
             aggregateReadings.merge(aggFromStore.value.ts, agg,
                     (a1, a2) -> new Aggregate(a1.count + a2.count, a1.sum + a2.sum, (a1.sum + a2.sum)/(a1.count + a2.count)));
         }
+        iterator.close();
         return aggregateReadings;
     }
 
