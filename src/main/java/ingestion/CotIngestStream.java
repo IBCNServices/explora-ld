@@ -244,7 +244,7 @@ public class CotIngestStream {
         //final int finalGeohashPrecision = geohashPrecision;
 
         KStream<String, AirQualityKeyedReading> airQualityKeyedStream = filteredStream.map(
-                (metricId, reading) -> KeyValue.pair(reading.getGeohash() + "#" + toFormattedTimestamp(reading.getTimestamp(), ZoneId.of("Europe/Brussels")), new AirQualityKeyedReading(
+                (metricId, reading) -> KeyValue.pair(reading.getGeohash() + "#" + toFormattedTimestamp(reading.getTimestamp(), ZoneId.systemDefault()), new AirQualityKeyedReading(
                         reading.getTsReceivedMs(),
                         reading.getMetricId(),
                         reading.getTimestamp(),
@@ -254,7 +254,7 @@ public class CotIngestStream {
                         reading.getElevation(),
                         reading.getValue(),
                         reading.getTimeUnit(),
-                        reading.getGeohash() + "#" + toFormattedTimestamp(reading.getTimestamp(), ZoneId.of("Europe/Brussels"))
+                        reading.getGeohash() + "#" + toFormattedTimestamp(reading.getTimestamp(), ZoneId.systemDefault())
                 ))
         );
 
@@ -263,7 +263,7 @@ public class CotIngestStream {
         geohashPrecisionList.forEach(gh -> {
             KGroupedStream<String, AirQualityReading> perMinKeyedStream = filteredStream.selectKey(
                     (metricId, reading) -> {
-                        ZonedDateTime readingDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(reading.getTimestamp()), ZoneId.of("Europe/Brussels"));
+                        ZonedDateTime readingDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(reading.getTimestamp()), ZoneId.systemDefault());
                         String minTimestamp = readingDate.truncatedTo(ChronoUnit.MINUTES).toLocalDateTime().format(DATE_TIME_FORMATTER);
                         return reading.getGeohash().substring(0, gh) + "#" + minTimestamp;
                     }
@@ -271,7 +271,7 @@ public class CotIngestStream {
 
             KGroupedStream<String, AirQualityReading> perHourKeyedStream = filteredStream.selectKey(
                     (metricId, reading) -> {
-                        ZonedDateTime readingDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(reading.getTimestamp()), ZoneId.of("Europe/Brussels"));
+                        ZonedDateTime readingDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(reading.getTimestamp()), ZoneId.systemDefault());
                         String hourTimestamp = readingDate.truncatedTo(ChronoUnit.HOURS).toLocalDateTime().format(DATE_TIME_FORMATTER);
                         return reading.getGeohash().substring(0, gh) + "#" + hourTimestamp;
                     }
@@ -279,7 +279,7 @@ public class CotIngestStream {
 
             KGroupedStream<String, AirQualityReading> perDayKeyedStream = filteredStream.selectKey(
                     (metricId, reading) -> {
-                        ZonedDateTime readingDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(reading.getTimestamp()), ZoneId.of("Europe/Brussels"));
+                        ZonedDateTime readingDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(reading.getTimestamp()), ZoneId.systemDefault());
                         String dayTimestamp = readingDate.truncatedTo(ChronoUnit.DAYS).toLocalDateTime().format(DATE_TIME_FORMATTER);
                         return reading.getGeohash().substring(0, gh) + "#" + dayTimestamp;
                     }
@@ -287,7 +287,7 @@ public class CotIngestStream {
 
             KGroupedStream<String, AirQualityReading> perMonthKeyedStream = filteredStream.selectKey(
                     (metricId, reading) -> {
-                        ZonedDateTime readingDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(reading.getTimestamp()), ZoneId.of("Europe/Brussels"));
+                        ZonedDateTime readingDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(reading.getTimestamp()), ZoneId.systemDefault());
                         String monthTimestamp = readingDate.truncatedTo(ChronoUnit.DAYS).withDayOfMonth(1).toLocalDateTime().format(DATE_TIME_FORMATTER);
                         return reading.getGeohash().substring(0, gh) + "#" + monthTimestamp;
                     }
@@ -295,7 +295,7 @@ public class CotIngestStream {
 
             KGroupedStream<String, AirQualityReading> perYearKeyedStream = filteredStream.selectKey(
                     (metricId, reading) -> {
-                        ZonedDateTime readingDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(reading.getTimestamp()), ZoneId.of("Europe/Brussels"));
+                        ZonedDateTime readingDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(reading.getTimestamp()), ZoneId.systemDefault());
                         String yearTimestamp = readingDate.truncatedTo(ChronoUnit.DAYS).withDayOfYear(1).toLocalDateTime().format(DATE_TIME_FORMATTER);
                         return reading.getGeohash().substring(0, gh) + "#" + yearTimestamp;
                     }
