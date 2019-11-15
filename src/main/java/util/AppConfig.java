@@ -15,7 +15,7 @@ public class AppConfig {
         put("5min", "min");
         put("1hour", "min");
         put("1day", "hour");
-        put("1week", "hour");
+        put("1week", "day");
         put("1month", "day");
         put("all", "day");
     }};
