@@ -316,25 +316,25 @@ public class CotIngestStream {
             KTable<String, AggregateValueTuple> perMinAggregate = perMinKeyedStream.aggregate(
                     () -> new AggregateValueTuple("", "", 0L, 0L, 0.0, 0.0),
                     (key, value, aggregate) -> airQReadingAggregator(key, value, aggregate),
-                    Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + aQMetricId.replace("::", ".") + "-gh" + gh + "-min").withValueSerde(aggSerde).withCachingEnabled()
+                    Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + aQMetricId.replace("::", ".") + "-gh" + gh + "-min").withValueSerde(aggSerde).withCachingDisabled()
             );
 
             KTable<String, AggregateValueTuple> perHourAggregate = perHourKeyedStream.aggregate(
                     () -> new AggregateValueTuple("", "", 0L, 0L, 0.0, 0.0),
                     (key, value, aggregate) -> airQReadingAggregator(key, value, aggregate),
-                    Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + aQMetricId.replace("::", ".") + "-gh" + gh + "-hour").withValueSerde(aggSerde).withCachingEnabled()
+                    Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + aQMetricId.replace("::", ".") + "-gh" + gh + "-hour").withValueSerde(aggSerde).withCachingDisabled()
             );
 
             KTable<String, AggregateValueTuple> perDayAggregate = perDayKeyedStream.aggregate(
                     () -> new AggregateValueTuple("", "", 0L, 0L, 0.0, 0.0),
                     (key, value, aggregate) -> airQReadingAggregator(key, value, aggregate),
-                    Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + aQMetricId.replace("::", ".") + "-gh" + gh + "-day").withValueSerde(aggSerde).withCachingEnabled()
+                    Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + aQMetricId.replace("::", ".") + "-gh" + gh + "-day").withValueSerde(aggSerde).withCachingDisabled()
             );
 
             KTable<String, AggregateValueTuple> perMonthAggregate = perMonthKeyedStream.aggregate(
                     () -> new AggregateValueTuple("", "", 0L, 0L, 0.0, 0.0),
                     (key, value, aggregate) -> airQReadingAggregator(key, value, aggregate),
-                    Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + aQMetricId.replace("::", ".") + "-gh" + gh + "-month").withValueSerde(aggSerde).withCachingEnabled()
+                    Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + aQMetricId.replace("::", ".") + "-gh" + gh + "-month").withValueSerde(aggSerde).withCachingDisabled()
             );
 
 //            KTable<String, AggregateValueTuple> perYearAggregate = perYearKeyedStream.aggregate(
