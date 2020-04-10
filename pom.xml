@@ -21,7 +21,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>technology.idlab.cot</groupId>
-    <artifactId>cot-aqa-kafka</artifactId>
+    <artifactId>explora-kafka</artifactId>
     <version>0.1</version>
     <packaging>jar</packaging>
 
@@ -69,7 +69,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>ingestion.CotIngestStream</mainClass>
+                            <mainClass>ingestion.IngestStream</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>

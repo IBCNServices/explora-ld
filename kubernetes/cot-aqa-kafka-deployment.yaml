@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: cot-aqa-kafka-env
+  name: explora-kafka-env
   labels:
-    app: cot-aqa-kafka
+    app: explora-kafka
 data:
   METRIC_ID: 'airquality.no2::number'
   READINGS_TOPIC: 'cot.airquality'
@@ -19,8 +19,8 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   labels:
-    app: cot-aqa-kafka
-  name: cot-aqa-kafka
+    app: explora-kafka
+  name: explora-kafka
 spec:
   replicas: 3
   strategy: {}
@@ -28,7 +28,7 @@ spec:
     metadata:
       creationTimestamp: null
       labels:
-        app: cot-aqa-kafka
+        app: explora-kafka
     spec:
       containers:
       - env:
@@ -38,11 +38,11 @@ spec:
               fieldPath: status.podIP
         envFrom:
         - configMapRef:
-            name: cot-aqa-kafka-env
-        image: gitlab.ilabt.imec.be:4567/lordezan/cot-aqa-kafka:latest
+            name: explora-kafka-env
+        image: gitlab.ilabt.imec.be:4567/lordezan/explora-kafka:latest
         command: ["sh"]
-        args: ["-c", "java -cp /usr/local/service/cot-aqa-kafka-0.1-jar-with-dependencies.jar ingestion.CotIngestStream --metric-id ${METRIC_ID} --geohash-precision ${GEOHASH_PRECISION} --cleanup"]
-        name: cot-aqa-kafka
+        args: ["-c", "java -cp /usr/local/service/explora-kafka-0.1-jar-with-dependencies.jar ingestion.CotIngestStream --metric-id ${METRIC_ID} --geohash-precision ${GEOHASH_PRECISION} --cleanup"]
+        name: explora-kafka
         resources:
           requests:
             cpu: "0.5"
@@ -50,7 +50,7 @@ spec:
             cpu: "2"
         ports:
         - containerPort: 7070
-          name: cot-aqa-kafka
+          name: explora-kafka
       restartPolicy: Always
       imagePullSecrets:
         - name: regcred

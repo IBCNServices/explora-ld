@@ -3,7 +3,6 @@ package querying;
 import model.Aggregate;
 import model.ErrorMessage;
 import model.Message;
-import org.apache.kafka.common.protocol.types.Field;
 import org.apache.kafka.common.serialization.LongSerializer;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.state.HostInfo;
@@ -24,16 +23,16 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Path("api")
-public class CotQueryingService {
+public class QueryingService {
     private Server jettyServer;
     private final HostInfo hostInfo;
     private final LongSerializer serializer = new LongSerializer();
-    private static final Logger log = LoggerFactory.getLogger(CotQueryingService.class);
-    private final CotQuerying controller;
+    private static final Logger log = LoggerFactory.getLogger(QueryingService.class);
+    private final QueryingController controller;
 
-    public CotQueryingService(final KafkaStreams streams, final HostInfo hostInfo) {
+    public QueryingService(final KafkaStreams streams, final HostInfo hostInfo) {
         this.hostInfo = hostInfo;
-        this.controller = new CotQuerying(streams, hostInfo);
+        this.controller = new QueryingController(streams, hostInfo);
     }
 
     @GET
@@ -95,7 +94,7 @@ public class CotQueryingService {
 
         if (toDate > 0) {
             if (fromDate >= toDate) {
-                String errorText = "[getAirQualityHistory] fromDate parameter should be greater than toDate";
+                String errorText = "[getAirQualityHistory] fromDate parameter should be less than toDate";
                 Response errorResp = Response.status(Response.Status.BAD_REQUEST)
                         .entity(new ErrorMessage(errorText, 400))
                         .build();

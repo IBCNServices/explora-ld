@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.commons.lang3.time.DateUtils.truncate;
 
-public class CotQuerying {
+public class QueryingController {
 
     private final KafkaStreams streams;
     private final MetadataService metadataService;
@@ -43,7 +43,7 @@ public class CotQuerying {
     private final Client client = ClientBuilder.newBuilder().register(JacksonFeature.class).build();
     public static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd:HHmmss:SSS");
 
-    public CotQuerying(KafkaStreams streams, HostInfo hostInfo) {
+    public QueryingController(KafkaStreams streams, HostInfo hostInfo) {
         this.streams = streams;
         this.metadataService = new MetadataService(streams);
         this.hostInfo = hostInfo;

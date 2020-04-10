@@ -21,7 +21,7 @@ import model.AirQualityKeyedReading;
 import model.AirQualityReading;
 import org.apache.kafka.streams.*;
 import org.apache.kafka.streams.state.HostInfo;
-import querying.CotQueryingService;
+import querying.QueryingService;
 import util.TSExtractor;
 import util.serdes.JsonPOJODeserializer;
 import util.serdes.JsonPOJOSerializer;
@@ -48,7 +48,7 @@ import java.util.stream.Stream;
 
 import static org.apache.commons.lang3.time.DateUtils.truncate;
 
-public class CotIngestStream {
+public class IngestStream {
 
     public static final String METRIC_ID = System.getenv("METRIC_ID") != null ? System.getenv("METRIC_ID") : "airquality.no2::number";
     public static final String READINGS_TOPIC = System.getenv("READINGS_TOPIC") != null ? System.getenv("READINGS_TOPIC") : "cot.airquality";
@@ -140,7 +140,7 @@ public class CotIngestStream {
         }
         streams.start();
         // Start the Restful proxy for servicing remote access to state stores
-        final CotQueryingService queryingService = startRestProxy(streams, restEndpoint);
+        final QueryingService queryingService = startRestProxy(streams, restEndpoint);
 
         final CountDownLatch latch = new CountDownLatch(1);
 
@@ -166,10 +166,10 @@ public class CotIngestStream {
         return ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), zoneId).toLocalDateTime().format(DATE_TIME_FORMATTER);
     }
 
-    private static CotQueryingService startRestProxy(final KafkaStreams streams, final HostInfo hostInfo)
+    private static QueryingService startRestProxy(final KafkaStreams streams, final HostInfo hostInfo)
             throws Exception {
-        final CotQueryingService
-                interactiveQueriesRestService = new CotQueryingService(streams, hostInfo);
+        final QueryingService
+                interactiveQueriesRestService = new QueryingService(streams, hostInfo);
         interactiveQueriesRestService.start();
         return interactiveQueriesRestService;
     }
