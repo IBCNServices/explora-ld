@@ -11,6 +11,7 @@ public class AppConfig {
     public static List<String> SUPPORTED_INTERVALS = Arrays.asList("5min", "1hour", "1day", "1week", "1month", "all");
     public static List<String> SUPPORTED_RESOLUTIONS = Arrays.asList("min", "hour", "day", "month");
     public static List<Integer> SUPPORTED_GH_PRECISION = System.getenv("GEOHASH_PRECISION") != null ? Stream.of(System.getenv("GEOHASH_PRECISION").split(",")).map(gh -> Integer.parseInt(gh)).collect(Collectors.toList()): Arrays.asList(6,7);
+    public static List<String> SUPPORTED_METRICS = System.getenv("METRICS") != null ? Stream.of(System.getenv("METRICS").split(",")).collect(Collectors.toList()) : Arrays.asList("airquality.no2::number","airquality.pm10::number");
     public static HashMap<String, String> TIME_RANGES = new HashMap<String, String>(){{
         put("5min", "min");
         put("1hour", "min");
