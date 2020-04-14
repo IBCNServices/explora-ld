@@ -3,16 +3,15 @@ package querying;
 import com.github.davidmoten.geo.Base32;
 import com.github.davidmoten.geo.GeoHash;
 import model.Aggregate;
-import model.AggregateValueTuple;
 import model.ErrorMessage;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.state.HostInfo;
-import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.QueryableStoreTypes;
-import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
+import org.apache.kafka.streams.state.ReadOnlyWindowStore;
+import org.apache.kafka.streams.state.WindowStoreIterator;
 import org.glassfish.jersey.jackson.JacksonFeature;
 import util.Aggregator;
 import util.AppConfig;
@@ -32,8 +31,6 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
-
-import static org.apache.commons.lang3.time.DateUtils.truncate;
 
 public class QueryingController {
 
@@ -213,19 +210,21 @@ public class QueryingController {
     }
 
     public Map<Long, Aggregate> getLocalAggregates4Range(String storeName, String geohashPrefix, Long from, Long to) {
-        final ReadOnlyKeyValueStore<String, AggregateValueTuple> viewStore = streams.store(storeName,
-                QueryableStoreTypes.keyValueStore());
-        final String fromK = geohashPrefix + "#" + (from != null ? toFormattedTimestamp(from, ZoneId.systemDefault()) : "");
-        final String toK = geohashPrefix + "#" + (to != null ? toFormattedTimestamp(to, ZoneId.systemDefault()) : toFormattedTimestamp(System.currentTimeMillis(), ZoneId.systemDefault()));
+        final ReadOnlyWindowStore<String, Aggregate> viewStore = streams.store(storeName,
+                QueryableStoreTypes.windowStore());
+//        final String fromK = geohashPrefix + "#" + (from != null ? toFormattedTimestamp(from, ZoneId.systemDefault()) : "");
+//        final String toK = geohashPrefix + "#" + (to != null ? toFormattedTimestamp(to, ZoneId.systemDefault()) : toFormattedTimestamp(System.currentTimeMillis(), ZoneId.systemDefault()));
+        final long fromK = from != null ? from : 0L;
+        final long toK = to != null ? to : System.currentTimeMillis();
 //        System.out.println("fromK=" + fromK);
 //        System.out.println("toK=" + toK);
         Map<Long, Aggregate> aggregateReadings = new TreeMap<>();
-        KeyValueIterator<String, AggregateValueTuple> iterator =  viewStore.range(fromK, toK);
+        WindowStoreIterator<Aggregate> iterator =  viewStore.fetch(geohashPrefix, Instant.ofEpochMilli(fromK), Instant.ofEpochMilli(toK));
         while (iterator.hasNext()) {
-            KeyValue<String, AggregateValueTuple> aggFromStore = iterator.next();
+            KeyValue<Long, Aggregate> aggFromStore = iterator.next();
 //            System.out.println("Aggregate for " + aggFromStore.key + ": " + aggFromStore.value);
             Aggregate agg = new Aggregate(aggFromStore.value.count, aggFromStore.value.sum, aggFromStore.value.avg);
-            aggregateReadings.merge(aggFromStore.value.ts, agg,
+            aggregateReadings.merge(aggFromStore.key, agg,
                     (a1, a2) -> new Aggregate(a1.count + a2.count, a1.sum + a2.sum, (a1.sum + a2.sum)/(a1.count + a2.count)));
         }
         iterator.close();
@@ -241,19 +240,19 @@ public class QueryingController {
     }
 
     public Map<String, Aggregate> getLocalAggregates4TimestampAndGHPrefix(String storeName, int geohashPrecision, Long ts, String geohashPrefix) {
-        final ReadOnlyKeyValueStore<String, AggregateValueTuple> viewStore = streams.store(storeName,
-                QueryableStoreTypes.keyValueStore());
+        final ReadOnlyWindowStore<String, Aggregate> viewStore = streams.store(storeName,
+                QueryableStoreTypes.windowStore());
         String truncateGHPrefix = StringUtils.truncate(geohashPrefix, geohashPrecision);
         Map<String, Aggregate> aggregateReadings = new TreeMap<>();
         for (long i = 0L; i < Math.pow(32, geohashPrecision - truncateGHPrefix.length()); i++) {
             String ghPart = geohashPrecision == truncateGHPrefix.length() ? truncateGHPrefix : truncateGHPrefix + Base32.encodeBase32(i, geohashPrecision - truncateGHPrefix.length());
-            String searchKey = ghPart + "#" + toFormattedTimestamp(ts, ZoneId.systemDefault());
+            String searchKey = ghPart; //+ "#" + toFormattedTimestamp(ts, ZoneId.systemDefault());
 //            System.out.println("[getLocalAggregates4TimestampAndGHPrefix] searchKey=" + searchKey);
-            AggregateValueTuple aggregateVT = viewStore.get(searchKey);
+            Aggregate aggregateVT = viewStore.fetch(searchKey, ts);
             if (aggregateVT != null) {
 //                System.out.println("Aggregate for " + ghPart + ": " + aggregateVT);
                 Aggregate agg = new Aggregate(aggregateVT.count, aggregateVT.sum, aggregateVT.avg);
-                aggregateReadings.merge(aggregateVT.gh, agg,
+                aggregateReadings.merge(searchKey, agg,
                         (a1, a2) -> new Aggregate(a1.count + a2.count, a1.sum + a2.sum, (a1.sum + a2.sum)/(a1.count + a2.count)));
             }
         }

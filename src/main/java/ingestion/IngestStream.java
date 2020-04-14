@@ -16,15 +16,9 @@
  */
 package ingestion;
 
-import model.AggregateValueTuple;
+import model.Aggregate;
 import model.AirQualityKeyedReading;
 import model.AirQualityReading;
-import org.apache.kafka.streams.*;
-import org.apache.kafka.streams.state.HostInfo;
-import querying.QueryingService;
-import util.TSExtractor;
-import util.serdes.JsonPOJODeserializer;
-import util.serdes.JsonPOJOSerializer;
 import org.apache.commons.cli.*;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.Deserializer;
@@ -32,21 +26,21 @@ import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.common.utils.Bytes;
+import org.apache.kafka.streams.*;
 import org.apache.kafka.streams.kstream.*;
-import org.apache.kafka.streams.state.KeyValueStore;
+import org.apache.kafka.streams.state.HostInfo;
+import org.apache.kafka.streams.state.WindowStore;
+import querying.QueryingService;
+import util.TSExtractor;
+import util.serdes.JsonPOJODeserializer;
+import util.serdes.JsonPOJOSerializer;
 
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static org.apache.commons.lang3.time.DateUtils.truncate;
 
 public class IngestStream {
 
@@ -59,10 +53,10 @@ public class IngestStream {
     public static final List<Integer> GEOHASH_PRECISION_LIST = System.getenv("GEOHASH_PRECISION") != null ? Stream.of(System.getenv("GEOHASH_PRECISION").split(",")).map(gh -> Integer.parseInt(gh)).collect(Collectors.toList()): Arrays.asList(6,7);
     public static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd:HHmmss:SSS");
 
-    private static AggregateValueTuple airQReadingAggregator(String key, AirQualityReading value, AggregateValueTuple aggregate) {
-        aggregate.gh_ts = key;
-        aggregate.gh = key.split("#")[0];
-        aggregate.ts = LocalDateTime.parse(key.split("#")[1], DateTimeFormatter.ofPattern("yyyyMMdd:HHmmss:SSS")).toInstant(ZoneId.systemDefault().getRules().getOffset(Instant.now())).toEpochMilli();
+    private static Aggregate airQReadingAggregator(AirQualityReading value, Aggregate aggregate) {
+//        aggregate.gh_ts = key;
+//        aggregate.gh = key.split("#")[0];
+//        aggregate.ts = LocalDateTime.parse(key.split("#")[1], DateTimeFormatter.ofPattern("yyyyMMdd:HHmmss:SSS")).toInstant(ZoneId.systemDefault().getRules().getOffset(Instant.now())).toEpochMilli();
         aggregate.count = aggregate.count + 1;
         aggregate.sum = aggregate.sum + (Double) value.getValue();
         aggregate.avg = aggregate.sum / aggregate.count;
@@ -217,15 +211,15 @@ public class IngestStream {
         final Serde<AirQualityKeyedReading> aQKSerde = Serdes.serdeFrom(aQKSerializer, aQKDeserializer);
 
         serdeProps = new HashMap<>();
-        final Serializer<AggregateValueTuple> aggSerializer = new JsonPOJOSerializer<>();
-        serdeProps.put("JsonPOJOClass", AggregateValueTuple.class);
+        final Serializer<Aggregate> aggSerializer = new JsonPOJOSerializer<>();
+        serdeProps.put("JsonPOJOClass", Aggregate.class);
         aggSerializer.configure(serdeProps, false);
 
-        final Deserializer<AggregateValueTuple> aggDeserializer = new JsonPOJODeserializer<>();
-        serdeProps.put("JsonPOJOClass", AggregateValueTuple.class);
+        final Deserializer<Aggregate> aggDeserializer = new JsonPOJODeserializer<>();
+        serdeProps.put("JsonPOJOClass", Aggregate.class);
         aggDeserializer.configure(serdeProps, false);
 
-        final Serde<AggregateValueTuple> aggSerde = Serdes.serdeFrom(aggSerializer, aggDeserializer);
+        final Serde<Aggregate> aggSerde = Serdes.serdeFrom(aggSerializer, aggDeserializer);
 
         // Set streaming topology and transformations
 
@@ -263,41 +257,41 @@ public class IngestStream {
         geohashPrecisionList.forEach(gh -> {
             KGroupedStream<String, AirQualityReading> perMinKeyedStream = filteredStream.selectKey(
                     (metricId, reading) -> {
-                        ZonedDateTime readingDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(reading.getTimestamp()), ZoneId.systemDefault());
-                        String minTimestamp = readingDate.truncatedTo(ChronoUnit.MINUTES).toLocalDateTime().format(DATE_TIME_FORMATTER);
-                        return reading.getGeohash().substring(0, gh) + "#" + minTimestamp;
+//                        ZonedDateTime readingDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(reading.getTimestamp()), ZoneId.systemDefault());
+//                        String minTimestamp = readingDate.truncatedTo(ChronoUnit.MINUTES).toLocalDateTime().format(DATE_TIME_FORMATTER);
+                        return reading.getGeohash().substring(0, gh); // + "#" + minTimestamp;
                     }
             ).groupByKey();
 
             KGroupedStream<String, AirQualityReading> perHourKeyedStream = filteredStream.selectKey(
                     (metricId, reading) -> {
-                        ZonedDateTime readingDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(reading.getTimestamp()), ZoneId.systemDefault());
-                        String hourTimestamp = readingDate.truncatedTo(ChronoUnit.HOURS).toLocalDateTime().format(DATE_TIME_FORMATTER);
-                        return reading.getGeohash().substring(0, gh) + "#" + hourTimestamp;
+//                        ZonedDateTime readingDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(reading.getTimestamp()), ZoneId.systemDefault());
+//                        String hourTimestamp = readingDate.truncatedTo(ChronoUnit.HOURS).toLocalDateTime().format(DATE_TIME_FORMATTER);
+                        return reading.getGeohash().substring(0, gh); // + "#" + hourTimestamp;
                     }
             ).groupByKey();
 
             KGroupedStream<String, AirQualityReading> perDayKeyedStream = filteredStream.selectKey(
                     (metricId, reading) -> {
-                        ZonedDateTime readingDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(reading.getTimestamp()), ZoneId.systemDefault());
-                        String dayTimestamp = readingDate.truncatedTo(ChronoUnit.DAYS).toLocalDateTime().format(DATE_TIME_FORMATTER);
-                        return reading.getGeohash().substring(0, gh) + "#" + dayTimestamp;
+//                        ZonedDateTime readingDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(reading.getTimestamp()), ZoneId.systemDefault());
+//                        String dayTimestamp = readingDate.truncatedTo(ChronoUnit.DAYS).toLocalDateTime().format(DATE_TIME_FORMATTER);
+                        return reading.getGeohash().substring(0, gh); // + "#" + dayTimestamp;
                     }
             ).groupByKey();
 
             KGroupedStream<String, AirQualityReading> perMonthKeyedStream = filteredStream.selectKey(
                     (metricId, reading) -> {
-                        ZonedDateTime readingDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(reading.getTimestamp()), ZoneId.systemDefault());
-                        String monthTimestamp = readingDate.truncatedTo(ChronoUnit.DAYS).withDayOfMonth(1).toLocalDateTime().format(DATE_TIME_FORMATTER);
-                        return reading.getGeohash().substring(0, gh) + "#" + monthTimestamp;
+//                        ZonedDateTime readingDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(reading.getTimestamp()), ZoneId.systemDefault());
+//                        String monthTimestamp = readingDate.truncatedTo(ChronoUnit.DAYS).withDayOfMonth(1).toLocalDateTime().format(DATE_TIME_FORMATTER);
+                        return reading.getGeohash().substring(0, gh); // + "#" + monthTimestamp;
                     }
             ).groupByKey();
 
             KGroupedStream<String, AirQualityReading> perYearKeyedStream = filteredStream.selectKey(
                     (metricId, reading) -> {
-                        ZonedDateTime readingDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(reading.getTimestamp()), ZoneId.systemDefault());
-                        String yearTimestamp = readingDate.truncatedTo(ChronoUnit.DAYS).withDayOfYear(1).toLocalDateTime().format(DATE_TIME_FORMATTER);
-                        return reading.getGeohash().substring(0, gh) + "#" + yearTimestamp;
+//                        ZonedDateTime readingDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(reading.getTimestamp()), ZoneId.systemDefault());
+//                        String yearTimestamp = readingDate.truncatedTo(ChronoUnit.DAYS).withDayOfYear(1).toLocalDateTime().format(DATE_TIME_FORMATTER);
+                        return reading.getGeohash().substring(0, gh); // + "#" + yearTimestamp;
                     }
             ).groupByKey();
 
@@ -313,29 +307,41 @@ public class IngestStream {
                 Materialized.<String, AirQualityReading, KeyValueStore<Bytes, byte[]>>as("raw-" + finalMetricId.replace("::", ".")).withValueSerde(aQSerde)
         );*/
 
-            KTable<String, AggregateValueTuple> perMinAggregate = perMinKeyedStream.aggregate(
-                    () -> new AggregateValueTuple("", "", 0L, 0L, 0.0, 0.0),
-                    (key, value, aggregate) -> airQReadingAggregator(key, value, aggregate),
-                    Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + aQMetricId.replace("::", ".") + "-gh" + gh + "-min").withValueSerde(aggSerde).withCachingEnabled()
-            );
+            KTable<Windowed<String>, Aggregate> perMinAggregate = perMinKeyedStream
+                    .windowedBy(TimeWindows.of(Duration.ofMinutes(1)))
+                    .aggregate(
+                            () -> new Aggregate(0L, 0.0, 0.0),
+                            (key, value, aggregate) -> airQReadingAggregator(value, aggregate),
+                            Materialized.<String, Aggregate, WindowStore<Bytes, byte[]>>as("view-" + aQMetricId.replace("::", ".") + "-gh" + gh + "-min")
+                                    .withValueSerde(aggSerde).withCachingEnabled()
+                    );
 
-            KTable<String, AggregateValueTuple> perHourAggregate = perHourKeyedStream.aggregate(
-                    () -> new AggregateValueTuple("", "", 0L, 0L, 0.0, 0.0),
-                    (key, value, aggregate) -> airQReadingAggregator(key, value, aggregate),
-                    Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + aQMetricId.replace("::", ".") + "-gh" + gh + "-hour").withValueSerde(aggSerde).withCachingEnabled()
-            );
+            KTable<Windowed<String>, Aggregate> perHourAggregate = perHourKeyedStream
+                    .windowedBy(TimeWindows.of(Duration.ofHours(1)))
+                    .aggregate(
+                            () -> new Aggregate(0L, 0.0, 0.0),
+                            (key, value, aggregate) -> airQReadingAggregator(value, aggregate),
+                            Materialized.<String, Aggregate, WindowStore<Bytes, byte[]>>as("view-" + aQMetricId.replace("::", ".") + "-gh" + gh + "-min")
+                                    .withValueSerde(aggSerde).withCachingEnabled()
+                    );
 
-            KTable<String, AggregateValueTuple> perDayAggregate = perDayKeyedStream.aggregate(
-                    () -> new AggregateValueTuple("", "", 0L, 0L, 0.0, 0.0),
-                    (key, value, aggregate) -> airQReadingAggregator(key, value, aggregate),
-                    Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + aQMetricId.replace("::", ".") + "-gh" + gh + "-day").withValueSerde(aggSerde).withCachingEnabled()
-            );
+            KTable<Windowed<String>, Aggregate> perDayAggregate = perDayKeyedStream
+                    .windowedBy(TimeWindows.of(Duration.ofDays(1)))
+                    .aggregate(
+                            () -> new Aggregate(0L, 0.0, 0.0),
+                            (key, value, aggregate) -> airQReadingAggregator(value, aggregate),
+                            Materialized.<String, Aggregate, WindowStore<Bytes, byte[]>>as("view-" + aQMetricId.replace("::", ".") + "-gh" + gh + "-min")
+                                    .withValueSerde(aggSerde).withCachingEnabled()
+                    );
 
-            KTable<String, AggregateValueTuple> perMonthAggregate = perMonthKeyedStream.aggregate(
-                    () -> new AggregateValueTuple("", "", 0L, 0L, 0.0, 0.0),
-                    (key, value, aggregate) -> airQReadingAggregator(key, value, aggregate),
-                    Materialized.<String, AggregateValueTuple, KeyValueStore<Bytes, byte[]>>as("view-" + aQMetricId.replace("::", ".") + "-gh" + gh + "-month").withValueSerde(aggSerde).withCachingEnabled()
-            );
+            KTable<Windowed<String>, Aggregate> perMonthAggregate = perMonthKeyedStream
+                    .windowedBy(TimeWindows.of(Duration.from(Period.ofMonths(1))))
+                    .aggregate(
+                            () -> new Aggregate(0L, 0.0, 0.0),
+                            (key, value, aggregate) -> airQReadingAggregator(value, aggregate),
+                            Materialized.<String, Aggregate, WindowStore<Bytes, byte[]>>as("view-" + aQMetricId.replace("::", ".") + "-gh" + gh + "-min")
+                                    .withValueSerde(aggSerde).withCachingEnabled()
+                    );
 
 //            KTable<String, AggregateValueTuple> perYearAggregate = perYearKeyedStream.aggregate(
 //                    () -> new AggregateValueTuple("", "", 0L, 0L, 0.0, 0.0),
