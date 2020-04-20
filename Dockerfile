@@ -23,7 +23,8 @@ ENV METRICS 'airquality.no2::number,airquality.pm10::number'
 ENV READINGS_TOPIC cot.airquality
 ENV APP_NAME explora-ingestion
 ENV KBROKERS 10.10.139.32:9092
-ENV GEOHASH_PRECISION '6,7'
+ENV GEO_INDEX geohashing
+ENV PRECISION '6,7'
 ENV REST_ENDPOINT_HOSTNAME 0.0.0.0
 ENV REST_ENDPOINT_PORT 7070
 
@@ -31,6 +32,6 @@ EXPOSE $REST_ENDPOINT_PORT
 
 COPY --from=build /usr/local/service/target/explora-kafka-0.1-jar-with-dependencies.jar /usr/local/service/explora-kafka-0.1-jar-with-dependencies.jar
 
-CMD ["sh", "-c", "java -cp /usr/local/service/explora-kafka-0.1-jar-with-dependencies.jar ingestion.IngestStream --metric-list ${METRIC_ID} --geohash-precision ${GEOHASH_PRECISION}"]
+CMD ["sh", "-c", "java -cp /usr/local/service/explora-kafka-0.1-jar-with-dependencies.jar ingestion.IngestStream --metric-list ${METRIC_ID} --geo-index ${GEO_INDEX} --precision ${PRECISION}"]
 
 

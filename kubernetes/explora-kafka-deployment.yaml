@@ -10,7 +10,8 @@ data:
   READINGS_TOPIC: 'cot.airquality'
   APP_NAME: 'explora-ingestion'
   KBROKERS: '10.10.139.32:9092'
-  GEOHASH_PRECISION: '6'
+  GEO_INDEX: 'quadtiling'
+  PRECISION: '14'
   #REST_ENDPOINT_HOSTNAME: '0.0.0.0'
   REST_ENDPOINT_PORT: '7070'
 
@@ -41,7 +42,7 @@ spec:
             name: explora-kafka-env
         image: gitlab.ilabt.imec.be:4567/lordezan/explora-kafka:latest
         command: ["sh"]
-        args: ["-c", "java -cp /usr/local/service/explora-kafka-0.1-jar-with-dependencies.jar ingestion.IngestStream --metric-list ${METRICS} --geohash-precision ${GEOHASH_PRECISION} --cleanup"]
+        args: ["-c", "java -cp /usr/local/service/explora-kafka-0.1-jar-with-dependencies.jar ingestion.IngestStream --metric-list ${METRICS} --geo-index ${GEO_INDEX} --precision ${PRECISION} --cleanup"]
         name: explora-kafka
         resources:
           requests:

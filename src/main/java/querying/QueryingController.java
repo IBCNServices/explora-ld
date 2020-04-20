@@ -14,10 +14,7 @@ import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.QueryableStoreTypes;
 import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
 import org.glassfish.jersey.jackson.JacksonFeature;
-import util.Aggregator;
-import util.AppConfig;
-import util.HostStoreInfo;
-import util.MetadataService;
+import util.*;
 
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.client.Client;
@@ -233,11 +230,35 @@ public class QueryingController {
     }
 
     public Map<String, Aggregate> getLocalAggregates4Timestamp(String storeName, int geohashPrecision, Long ts, List<Double> bbox) {
-        List<String> bboxGeohashes = new ArrayList<>(GeoHash.coverBoundingBox(bbox.get(0), bbox.get(1), bbox.get(2), bbox.get(3)).getHashes());
-        Aggregator<String> aggCollect = bboxGeohashes.stream()
-                .map(gh -> getLocalAggregates4TimestampAndGHPrefix(storeName, geohashPrecision, ts, gh))
-                .collect(Aggregator<String>::new, Aggregator<String>::accept, Aggregator<String>::combine);
-        return aggCollect.getAggregateMap();
+        if (System.getenv("GEO_INDEX").equals("quadtiling")) {
+            List<String> bboxQuadkeys = new ArrayList<>(QuadHash.coverBoundingBox(bbox.get(0), bbox.get(1), bbox.get(2), bbox.get(3), geohashPrecision));
+            Aggregator<String> aggCollect = bboxQuadkeys.stream()
+                    .map(qk -> getLocalAggregates4TimestampAndQKPrefix(storeName, geohashPrecision, ts, qk))
+                    .collect(Aggregator<String>::new, Aggregator<String>::accept, Aggregator<String>::combine);
+            return aggCollect.getAggregateMap();
+        } else {
+            List<String> bboxGeohashes = new ArrayList<>(GeoHash.coverBoundingBox(bbox.get(0), bbox.get(1), bbox.get(2), bbox.get(3)).getHashes());
+            Aggregator<String> aggCollect = bboxGeohashes.stream()
+                    .map(gh -> getLocalAggregates4TimestampAndGHPrefix(storeName, geohashPrecision, ts, gh))
+                    .collect(Aggregator<String>::new, Aggregator<String>::accept, Aggregator<String>::combine);
+            return aggCollect.getAggregateMap();
+        }
+    }
+
+    public Map<String, Aggregate> getLocalAggregates4TimestampAndQKPrefix(String storeName, int precision, Long ts, String qk) {
+        final ReadOnlyKeyValueStore<String, AggregateValueTuple> viewStore = streams.store(storeName,
+                QueryableStoreTypes.keyValueStore());
+        Map<String, Aggregate> aggregateReadings = new TreeMap<>();
+        String searchKey = qk + "#" + toFormattedTimestamp(ts, ZoneId.systemDefault());
+//        System.out.println("[getLocalAggregates4TimestampAndQKPrefix] searchKey=" + searchKey);
+        AggregateValueTuple aggregateVT = viewStore.get(searchKey);
+        if (aggregateVT != null) {
+//            System.out.println("Aggregate for " + ghPart + ": " + aggregateVT);
+            Aggregate agg = new Aggregate(aggregateVT.count, aggregateVT.sum, aggregateVT.avg);
+            aggregateReadings.merge(aggregateVT.gh, agg,
+                    (a1, a2) -> new Aggregate(a1.count + a2.count, a1.sum + a2.sum, (a1.sum + a2.sum) / (a1.count + a2.count)));
+        }
+        return aggregateReadings;
     }
 
     public Map<String, Aggregate> getLocalAggregates4TimestampAndGHPrefix(String storeName, int geohashPrecision, Long ts, String geohashPrefix) {
