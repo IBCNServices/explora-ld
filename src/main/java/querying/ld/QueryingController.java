@@ -108,17 +108,18 @@ public class QueryingController {
                     QueryableStoreTypes.keyValueStore());
             Map<String, Aggregate> aggregateReadings = new TreeMap<>();
             AggregateValueTuple aggregateVT = viewStore.get(searchKey);
-            assert aggregateVT != null : "Data not found for the the provided parameters";
+            //assert aggregateVT != null : "Data not found for the the provided parameters";
+            System.out.println("[getLocalAggregate] aggregateVT(searchKey)=" + aggregateVT);
             Aggregate agg = new Aggregate(aggregateVT.count, aggregateVT.sum, aggregateVT.avg);
             aggregateReadings.merge(metricId, agg,
                     (a1, a2) -> new Aggregate(a1.count + a2.count, a1.sum + a2.sum, (a1.sum + a2.sum)/(a1.count + a2.count)));
             return aggregateReadings;
-        } catch (Exception e) {
+        } catch (NullPointerException e) {
             e.printStackTrace();
             Throwable rootCause = ExceptionUtils.getRootCause(e);
             rootCause.printStackTrace();
-            Response errorResp = Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(new ErrorMessage(rootCause.getMessage(), 500))
+            Response errorResp = Response.status(Response.Status.NOT_FOUND)
+                    .entity(new ErrorMessage("Data not found for the the provided parameters", 404))
                     .build();
             throw new WebApplicationException(errorResp);
         }
