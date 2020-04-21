@@ -103,14 +103,25 @@ public class QueryingController {
 
     public Map<String, Aggregate> getLocalAggregate(String storeName, String searchKey, String metricId) {
         System.out.println("[getLocalAggregate] Processing request for " + metricId + " with " + searchKey + "...");
-        final ReadOnlyKeyValueStore<String, AggregateValueTuple> viewStore = streams.store(storeName,
-                QueryableStoreTypes.keyValueStore());
-        Map<String, Aggregate> aggregateReadings = new TreeMap<>();
-        AggregateValueTuple aggregateVT =  viewStore.get(searchKey);
-        Aggregate agg = new Aggregate(aggregateVT.count, aggregateVT.sum, aggregateVT.avg);
-        aggregateReadings.merge(metricId, agg,
-                (a1, a2) -> new Aggregate(a1.count + a2.count, a1.sum + a2.sum, (a1.sum + a2.sum)/(a1.count + a2.count)));
-        return aggregateReadings;
+        try {
+            final ReadOnlyKeyValueStore<String, AggregateValueTuple> viewStore = streams.store(storeName,
+                    QueryableStoreTypes.keyValueStore());
+            Map<String, Aggregate> aggregateReadings = new TreeMap<>();
+            AggregateValueTuple aggregateVT = viewStore.get(searchKey);
+            assert aggregateVT != null : "Data not found for the the provided parameters";
+            Aggregate agg = new Aggregate(aggregateVT.count, aggregateVT.sum, aggregateVT.avg);
+            aggregateReadings.merge(metricId, agg,
+                    (a1, a2) -> new Aggregate(a1.count + a2.count, a1.sum + a2.sum, (a1.sum + a2.sum)/(a1.count + a2.count)));
+            return aggregateReadings;
+        } catch (Exception e) {
+            e.printStackTrace();
+            Throwable rootCause = ExceptionUtils.getRootCause(e);
+            rootCause.printStackTrace();
+            Response errorResp = Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(new ErrorMessage(rootCause.getMessage(), 500))
+                    .build();
+            throw new WebApplicationException(errorResp);
+        }
     }
 
     private Long truncateTS(Long timestamp, String resolution) {
