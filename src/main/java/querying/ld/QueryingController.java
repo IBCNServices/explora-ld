@@ -24,6 +24,7 @@ import util.MetadataService;
 import util.geoindex.QuadHash;
 import util.geoindex.Tile;
 
+import javax.ws.rs.NotFoundException;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
@@ -94,10 +95,18 @@ public class QueryingController {
             e.printStackTrace();
             Throwable rootCause = ExceptionUtils.getRootCause(e);
             rootCause.printStackTrace();
-            Response errorResp = Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(new ErrorMessage(rootCause.getMessage(), 500))
-                    .build();
-            throw new WebApplicationException(errorResp);
+            if (e instanceof NotFoundException) {
+                Response errorResp = Response.status(Response.Status.NOT_FOUND)
+                        .entity(new ErrorMessage("Data not found for the the provided parameters", 404))
+                        .build();
+                throw new WebApplicationException(errorResp);
+            } else {
+                Response errorResp = Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                        .entity(new ErrorMessage(rootCause.getMessage(), 500))
+                        .build();
+                throw new WebApplicationException(errorResp);
+            }
+
         }
     }
 
