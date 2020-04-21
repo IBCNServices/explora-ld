@@ -53,7 +53,7 @@ public class QueryingController {
     }
 
     public TreeMap<String, Aggregate> solveSpatialQuery(Tile quadTile, String page, String aggrMethod, String aggrPeriod, Boolean local) {
-//        System.out.println("[solveSpatialQuery] method call");
+        System.out.println("[solveSpatialQuery] method call");
         List<String> stores = AppConfig.SUPPORTED_METRICS.stream().map(metricId -> {
             return "view-" + metricId.replace("::", ".") + "-gh" + quadTile.getZoom() + "-" + aggrPeriod;
         }).collect(Collectors.toList());
@@ -61,7 +61,8 @@ public class QueryingController {
         String quadKey = QuadHash.getQuadKey(quadTile);
         long ts = truncateTS(Instant.parse(page).toEpochMilli(), aggrPeriod);
         String searchKey = quadKey + "#" + toFormattedTimestamp(ts, ZoneId.systemDefault());
-
+        System.out.println("[solveSpatialQuery] ts(truncated)=" + ts);
+        System.out.println("[solveSpatialQuery] searchKey=" + searchKey);
         Aggregator<String> aggCollect = AppConfig.SUPPORTED_METRICS.stream().map(metricId -> {
             final String store = "view-" + metricId.replace("::", ".") + "-gh" + quadTile.getZoom() + "-" + aggrPeriod;
             final HostStoreInfo host = metadataService.streamsMetadataForStoreAndKey(store, searchKey, new StringSerializer());
@@ -101,7 +102,7 @@ public class QueryingController {
     }
 
     public Map<String, Aggregate> getLocalAggregate(String storeName, String searchKey, String metricId) {
-//        System.out.println("[getLocalAggregate] Processing request...");
+        System.out.println("[getLocalAggregate] Processing request for " + metricId + " with " + searchKey + "...");
         final ReadOnlyKeyValueStore<String, AggregateValueTuple> viewStore = streams.store(storeName,
                 QueryableStoreTypes.keyValueStore());
         Map<String, Aggregate> aggregateReadings = new TreeMap<>();
