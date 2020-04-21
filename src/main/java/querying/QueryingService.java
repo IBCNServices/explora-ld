@@ -213,7 +213,7 @@ public class QueryingService {
 
         // if the specified geohash precision operation is not yet supported => 400 Bad Request
         if(!AppConfig.SUPPORTED_PRECISION.contains(geohashPrecision)) {
-            String errorText = String.format("[getAirQualitySnapshot] geohash precision %s is not yet supported", geohashPrecision);
+            String errorText = String.format("[getAirQualitySnapshot] precision %s is not yet supported", geohashPrecision);
             Response errorResp = Response.status(Response.Status.BAD_REQUEST)
                     .entity(new ErrorMessage(errorText, 400))
                     .build();

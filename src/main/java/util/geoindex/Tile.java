@@ -1,9 +1,9 @@
-package util;
+package util.geoindex;
 
 public class Tile {
-    public int x;
-    public int y;
-    public int zoom;
+    private int x;
+    private int y;
+    private int zoom;
 
     public Tile() {
     }
@@ -40,10 +40,6 @@ public class Tile {
 
     @Override
     public String toString() {
-        return "Tile{" +
-                "x=" + x +
-                ", y=" + y +
-                ", zoom=" + zoom +
-                '}';
+        return zoom + "/" + x + "/" + y;
     }
 }

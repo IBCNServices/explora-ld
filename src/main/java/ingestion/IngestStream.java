@@ -23,11 +23,10 @@ import model.AirQualityKeyedReading;
 import model.AirQualityReading;
 import org.apache.kafka.streams.*;
 import org.apache.kafka.streams.state.HostInfo;
-import querying.QueryingService;
+import querying.ld.QueryingService;
 import util.AppConfig;
-import util.QuadHash;
+import util.geoindex.QuadHash;
 import util.TSExtractor;
-import util.Tile;
 import util.serdes.JsonPOJODeserializer;
 import util.serdes.JsonPOJOSerializer;
 import org.apache.commons.cli.*;
@@ -119,7 +118,8 @@ public class IngestStream {
                 geoIndex = GEO_INDEX;
             }
             if( line.hasOption( "precision" ) ) {
-                precisionList = Stream.of(line.getOptionValue("precision").split(",")).map(gh -> Integer.parseInt(gh)).collect(Collectors.toList());
+                precisionList = Stream.of(line.getOptionValue("precision").split(",")).map(Integer::parseInt).collect(Collectors.toList());
+                AppConfig.SUPPORTED_PRECISION = precisionList;
             } else {
                 precisionList = PRECISION_LIST;
             }

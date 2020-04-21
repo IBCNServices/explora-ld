@@ -15,6 +15,7 @@ import org.apache.kafka.streams.state.QueryableStoreTypes;
 import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
 import org.glassfish.jersey.jackson.JacksonFeature;
 import util.*;
+import util.geoindex.QuadHash;
 
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.client.Client;
