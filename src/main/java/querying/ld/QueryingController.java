@@ -80,9 +80,9 @@ public class QueryingController {
                 return client.target(String.format("http://%s:%d/data/%s/%s/%s",
                         host.getHost(),
                         host.getPort(),
+                        quadTile.getZoom(),
                         quadTile.getX(),
-                        quadTile.getY(),
-                        quadTile.getZoom()))
+                        quadTile.getY()))
                         .queryParam("page", page)
                         .queryParam("aggrMethod", aggrMethod)
                         .queryParam("aggrPeriod", aggrPeriod)
