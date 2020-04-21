@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: explora-kafka-env
+  name: explora-ld-env
   labels:
-    app: explora-kafka
+    app: explora-ld
 data:
   METRICS: 'airquality.no2::number,airquality.pm10::number'
   READINGS_TOPIC: 'cot.airquality'
@@ -20,8 +20,8 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   labels:
-    app: explora-kafka
-  name: explora-kafka
+    app: explora-ld
+  name: explora-ld
 spec:
   replicas: 3
   strategy: {}
@@ -29,7 +29,7 @@ spec:
     metadata:
       creationTimestamp: null
       labels:
-        app: explora-kafka
+        app: explora-ld
     spec:
       containers:
       - env:
@@ -39,11 +39,11 @@ spec:
               fieldPath: status.podIP
         envFrom:
         - configMapRef:
-            name: explora-kafka-env
-        image: gitlab.ilabt.imec.be:4567/lordezan/explora-kafka:latest
+            name: explora-ld-env
+        image: gitlab.ilabt.imec.be:4567/lordezan/explora-ld:latest
         command: ["sh"]
-        args: ["-c", "java -cp /usr/local/service/explora-kafka-0.1-jar-with-dependencies.jar ingestion.IngestStream --metric-list ${METRICS} --geo-index ${GEO_INDEX} --precision ${PRECISION} --cleanup"]
-        name: explora-kafka
+        args: ["-c", "java -cp /usr/local/service/explora-ld-0.1-jar-with-dependencies.jar ingestion.IngestStream --metric-list ${METRICS} --geo-index ${GEO_INDEX} --precision ${PRECISION} --cleanup"]
+        name: explora-ld
         resources:
           requests:
             cpu: "0.5"
@@ -51,7 +51,7 @@ spec:
             cpu: "2"
         ports:
         - containerPort: 7070
-          name: explora-kafka
+          name: explora-ld
       restartPolicy: Always
       imagePullSecrets:
         - name: regcred

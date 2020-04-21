@@ -30,8 +30,8 @@ ENV REST_ENDPOINT_PORT 7070
 
 EXPOSE $REST_ENDPOINT_PORT
 
-COPY --from=build /usr/local/service/target/explora-kafka-0.1-jar-with-dependencies.jar /usr/local/service/explora-kafka-0.1-jar-with-dependencies.jar
+COPY --from=build /usr/local/service/target/explora-ld-0.1-jar-with-dependencies.jar /usr/local/service/explora-ld-0.1-jar-with-dependencies.jar
 
-CMD ["sh", "-c", "java -cp /usr/local/service/explora-kafka-0.1-jar-with-dependencies.jar ingestion.IngestStream --metric-list ${METRIC_ID} --geo-index ${GEO_INDEX} --precision ${PRECISION}"]
+CMD ["sh", "-c", "java -cp /usr/local/service/explora-ld-0.1-jar-with-dependencies.jar ingestion.IngestStream --metric-list ${METRIC_ID} --geo-index ${GEO_INDEX} --precision ${PRECISION}"]
 
 
