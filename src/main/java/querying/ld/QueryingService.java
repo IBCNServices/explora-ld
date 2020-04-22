@@ -15,12 +15,16 @@ import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import querying.ld.QueryingController;
 import util.AppConfig;
+import util.geoindex.QuadHash;
 import util.geoindex.Tile;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.*;
+import java.time.Instant;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Path("data")
 public class QueryingService {
@@ -67,8 +71,8 @@ public class QueryingService {
         }
 
         String aggrPeriod = qParams.getQueryParameters().getOrDefault("aggrPeriod", Collections.singletonList("")).get(0).toLowerCase();
+//        Boolean local = Boolean.valueOf(qParams.getQueryParameters().getOrDefault("local", Collections.singletonList("false")).get(0).toLowerCase());
         String metricId = qParams.getQueryParameters().getOrDefault("metricId", Collections.singletonList("")).get(0).toLowerCase();
-
         // if the specified precision (z) is not yet supported => 400 Bad Request
         if(!AppConfig.SUPPORTED_PRECISION.contains(z)) {
             String errorText = String.format("[getAirQualityHistory] precision %s is not yet supported", z);
@@ -80,7 +84,7 @@ public class QueryingService {
         }
 
 
-        Map<String, Aggregate> results = new TreeMap<>();
+        TreeMap<String, Aggregate> results = new TreeMap<>();
         if (!(aggrPeriod.isEmpty()) && AppConfig.SUPPORTED_RESOLUTIONS.contains(aggrPeriod)){
 //            System.out.println(String.format("[getAirQualityHistory] Querying Explora: %1$s/%2$s/%3$s=%4$s, %5$s, %6$s, %7$s...", z, x, y, searchKey, page, aggrMethod, aggrPeriod));
             results = controller.solveSpatialQuery(new Tile(x , y, z), page, aggrMethod, aggrPeriod,  metricId);
@@ -95,11 +99,11 @@ public class QueryingService {
         List<String> columns = Arrays.asList("metricId", aggrMethod);
         HashMap<String, String> metadata = new HashMap<>();
         metadata.put("variable", "air_quality");
-        return prepareResponse(aggrMethod, results, metadata, columns);
+        return prepareResponse(aggrMethod, results, metadata, columns, metricId, new GenericType<Long>(){});
     }
 
-    private Response prepareResponse(String aggregate, Map payload, Map metadata, List<String> columns){
-//        if (!local) {
+    private <T> Response prepareResponse(String aggregate, Map payload, Map metadata, List<String> columns, String metricId, GenericType<T> keyType){
+        if (metricId.isEmpty()) {
 //                Map<Long, Double> finalResults = new TreeMap<>();
             List data = new ArrayList();
             System.out.println("[prepareResponse] Incoming payload: " + payload);
@@ -118,10 +122,10 @@ public class QueryingService {
             System.out.println("[prepareResponse] Outgoing data: " + data);
             Message respMessage = new Message(columns, data, metadata);
             return Response.ok(respMessage).build();
-//        }
-//                System.out.println("[queryAirQuality] sending results");
+        }
+                System.out.println("[prepareResponse] sending results");
 //                System.out.println(results);
-//        return Response.ok(new GenericEntity<Map<T, Aggregate>>(payload){}).build();
+        return Response.ok(new GenericEntity<Map<T, Aggregate>>(payload){}).build();
     }
 
     /**
