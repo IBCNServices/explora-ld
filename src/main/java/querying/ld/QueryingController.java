@@ -53,30 +53,32 @@ public class QueryingController {
         this.hostInfo = hostInfo;
     }
 
-    public TreeMap<String, Aggregate> solveSpatialQuery(Tile quadTile, String page, String aggrMethod, String aggrPeriod, Boolean local) {
+    public Map<String, Aggregate> solveSpatialQuery(Tile quadTile, String page, String aggrMethod, String aggrPeriod, String metricId) {
         System.out.println("[solveSpatialQuery] method call");
-        List<String> stores = AppConfig.SUPPORTED_METRICS.stream().map(metricId -> {
-            return "view-" + metricId.replace("::", ".") + "-gh" + quadTile.getZoom() + "-" + aggrPeriod;
-        }).collect(Collectors.toList());
 
         String quadKey = QuadHash.getQuadKey(quadTile);
         long ts = truncateTS(Instant.parse(page).toEpochMilli(), aggrPeriod);
         String searchKey = quadKey + "#" + toFormattedTimestamp(ts, ZoneId.systemDefault());
         System.out.println("[solveSpatialQuery] ts(truncated)=" + ts);
         System.out.println("[solveSpatialQuery] searchKey=" + searchKey);
-        Aggregator<String> aggCollect = AppConfig.SUPPORTED_METRICS.stream().map(metricId -> {
-            final String store = "view-" + metricId.replace("::", ".") + "-gh" + quadTile.getZoom() + "-" + aggrPeriod;
-            final HostStoreInfo host = metadataService.streamsMetadataForStoreAndKey(store, searchKey, new StringSerializer());
-            if (!thisHost(host)) {
-                return fetchAggregate(host, quadTile, page, aggrMethod, aggrPeriod);
-            } else {
-                return getLocalAggregate(store, searchKey, metricId);
-            }
-        }).collect(Aggregator<String>::new, Aggregator<String>::accept, Aggregator<String>::combine);
-        return aggCollect.getAggregateMap();
+
+        if(!metricId.isEmpty()) {
+            return getLocalAggregate("view-" + metricId.replace("::", ".") + "-gh" + quadTile.getZoom() + "-" + aggrPeriod, searchKey, metricId);
+        } else {
+            Aggregator<String> aggCollect = AppConfig.SUPPORTED_METRICS.stream().map(metric -> {
+                final String store = "view-" + metric.replace("::", ".") + "-gh" + quadTile.getZoom() + "-" + aggrPeriod;
+                final HostStoreInfo host = metadataService.streamsMetadataForStoreAndKey(store, searchKey, new StringSerializer());
+                if (!thisHost(host)) {
+                    return fetchAggregate(host, quadTile, page, aggrMethod, aggrPeriod, metric);
+                } else {
+                    return getLocalAggregate(store, searchKey, metric);
+                }
+            }).collect(Aggregator<String>::new, Aggregator<String>::accept, Aggregator<String>::combine);
+            return aggCollect.getAggregateMap();
+        }
     }
 
-    public TreeMap<String, Aggregate> fetchAggregate(HostStoreInfo host, Tile quadTile, String page, String aggrMethod, String aggrPeriod) {
+    public Map<String, Aggregate> fetchAggregate(HostStoreInfo host, Tile quadTile, String page, String aggrMethod, String aggrPeriod, String metric) {
         try {
                 System.out.println(String.format("[fetchAggregate] Forwarding request to %s:%s", host.getHost(), host.getPort()));
                 return client.target(String.format("http://%s:%d/data/%s/%s/%s",
@@ -88,25 +90,17 @@ public class QueryingController {
                         .queryParam("page", page)
                         .queryParam("aggrMethod", aggrMethod)
                         .queryParam("aggrPeriod", aggrPeriod)
-                        .queryParam("local", true)
+                        .queryParam("metricId", metric)
                         .request(MediaType.APPLICATION_JSON_TYPE)
                         .get(new GenericType<TreeMap<String, Aggregate>>() {});
         } catch (Exception e) {
             e.printStackTrace();
             Throwable rootCause = ExceptionUtils.getRootCause(e);
             rootCause.printStackTrace();
-            if (e instanceof NotFoundException) {
-                Response errorResp = Response.status(Response.Status.NOT_FOUND)
-                        .entity(new ErrorMessage("Data not found for the the provided parameters", 404))
-                        .build();
-                throw new WebApplicationException(errorResp);
-            } else {
-                Response errorResp = Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+            Response errorResp = Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                         .entity(new ErrorMessage(rootCause.getMessage(), 500))
                         .build();
-                throw new WebApplicationException(errorResp);
-            }
-
+            throw new WebApplicationException(errorResp);
         }
     }
 
@@ -119,16 +113,18 @@ public class QueryingController {
             AggregateValueTuple aggregateVT = viewStore.get(searchKey);
             //assert aggregateVT != null : "Data not found for the the provided parameters";
             System.out.println("[getLocalAggregate] aggregateVT(searchKey)=" + aggregateVT);
-            Aggregate agg = new Aggregate(aggregateVT.count, aggregateVT.sum, aggregateVT.avg);
-            aggregateReadings.merge(metricId, agg,
-                    (a1, a2) -> new Aggregate(a1.count + a2.count, a1.sum + a2.sum, (a1.sum + a2.sum)/(a1.count + a2.count)));
+            if(aggregateVT != null) {
+                Aggregate agg = new Aggregate(aggregateVT.count, aggregateVT.sum, aggregateVT.avg);
+                aggregateReadings.merge(metricId, agg,
+                        (a1, a2) -> new Aggregate(a1.count + a2.count, a1.sum + a2.sum, (a1.sum + a2.sum)/(a1.count + a2.count)));
+            }
             return aggregateReadings;
-        } catch (NullPointerException e) {
+        } catch (Exception e) {
             e.printStackTrace();
             Throwable rootCause = ExceptionUtils.getRootCause(e);
             rootCause.printStackTrace();
-            Response errorResp = Response.status(Response.Status.NOT_FOUND)
-                    .entity(new ErrorMessage("Data not found for the the provided parameters", 404))
+            Response errorResp = Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(new ErrorMessage(rootCause.getMessage(), 500))
                     .build();
             throw new WebApplicationException(errorResp);
         }
