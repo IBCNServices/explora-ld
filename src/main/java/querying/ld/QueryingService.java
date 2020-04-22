@@ -102,7 +102,7 @@ public class QueryingService {
 //        if (!local) {
 //                Map<Long, Double> finalResults = new TreeMap<>();
             List data = new ArrayList();
-//            System.out.println("[prepareResponse] Incoming payload: " + payload);
+            System.out.println("[prepareResponse] Incoming payload: " + payload);
             payload.forEach((key, value) -> {
                 try {
                     data.add(Arrays.asList(key, value.getClass().getField(aggregate).get(value)));
@@ -115,7 +115,7 @@ public class QueryingService {
                     throw new WebApplicationException(errorResp);
                 }
             });
-//            System.out.println("[prepareResponse] Outgoing data: " + data);
+            System.out.println("[prepareResponse] Outgoing data: " + data);
             Message respMessage = new Message(columns, data, metadata);
             return Response.ok(respMessage).build();
 //        }

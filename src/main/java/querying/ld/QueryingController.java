@@ -118,6 +118,7 @@ public class QueryingController {
                 aggregateReadings.merge(metricId, agg,
                         (a1, a2) -> new Aggregate(a1.count + a2.count, a1.sum + a2.sum, (a1.sum + a2.sum)/(a1.count + a2.count)));
             }
+            System.out.println("[getLocalAggregate] aggregateReadings=" + aggregateReadings);
             return aggregateReadings;
         } catch (Exception e) {
             e.printStackTrace();
