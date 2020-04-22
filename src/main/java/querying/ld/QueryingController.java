@@ -53,7 +53,7 @@ public class QueryingController {
         this.hostInfo = hostInfo;
     }
 
-    public Map<String, Aggregate> solveSpatialQuery(Tile quadTile, String page, String aggrMethod, String aggrPeriod, String metricId) {
+    public TreeMap<String, Aggregate> solveSpatialQuery(Tile quadTile, String page, String aggrMethod, String aggrPeriod, String metricId) {
         System.out.println("[solveSpatialQuery] method call");
 
         String quadKey = QuadHash.getQuadKey(quadTile);
@@ -78,7 +78,7 @@ public class QueryingController {
         }
     }
 
-    public Map<String, Aggregate> fetchAggregate(HostStoreInfo host, Tile quadTile, String page, String aggrMethod, String aggrPeriod, String metric) {
+    public TreeMap<String, Aggregate> fetchAggregate(HostStoreInfo host, Tile quadTile, String page, String aggrMethod, String aggrPeriod, String metric) {
         try {
                 System.out.println(String.format("[fetchAggregate] Forwarding request to %s:%s", host.getHost(), host.getPort()));
                 return client.target(String.format("http://%s:%d/data/%s/%s/%s",
@@ -104,12 +104,12 @@ public class QueryingController {
         }
     }
 
-    public Map<String, Aggregate> getLocalAggregate(String storeName, String searchKey, String metricId) {
+    public TreeMap<String, Aggregate> getLocalAggregate(String storeName, String searchKey, String metricId) {
         System.out.println("[getLocalAggregate] Processing request for " + metricId + " with " + searchKey + "...");
         try {
             final ReadOnlyKeyValueStore<String, AggregateValueTuple> viewStore = streams.store(storeName,
                     QueryableStoreTypes.keyValueStore());
-            Map<String, Aggregate> aggregateReadings = new TreeMap<>();
+            TreeMap<String, Aggregate> aggregateReadings = new TreeMap<>();
             AggregateValueTuple aggregateVT = viewStore.get(searchKey);
             //assert aggregateVT != null : "Data not found for the the provided parameters";
             System.out.println("[getLocalAggregate] aggregateVT(searchKey)=" + aggregateVT);

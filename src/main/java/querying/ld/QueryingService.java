@@ -80,7 +80,7 @@ public class QueryingService {
         }
 
 
-        Map<String, Aggregate> results = new HashMap<>();
+        Map<String, Aggregate> results = new TreeMap<>();
         if (!(aggrPeriod.isEmpty()) && AppConfig.SUPPORTED_RESOLUTIONS.contains(aggrPeriod)){
 //            System.out.println(String.format("[getAirQualityHistory] Querying Explora: %1$s/%2$s/%3$s=%4$s, %5$s, %6$s, %7$s...", z, x, y, searchKey, page, aggrMethod, aggrPeriod));
             results = controller.solveSpatialQuery(new Tile(x , y, z), page, aggrMethod, aggrPeriod,  metricId);
