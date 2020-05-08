@@ -1,5 +1,6 @@
 package querying.ld;
 
+import jsonld.JSONLDBuilder;
 import model.Aggregate;
 import model.ErrorMessage;
 import model.Message;
@@ -85,9 +86,10 @@ public class QueryingService {
 
 
         TreeMap<String, Aggregate> results = new TreeMap<>();
+        Tile qTile = new Tile(x , y, z);
         if (!(aggrPeriod.isEmpty()) && AppConfig.SUPPORTED_RESOLUTIONS.contains(aggrPeriod)){
 //            System.out.println(String.format("[getAirQualityHistory] Querying Explora: %1$s/%2$s/%3$s=%4$s, %5$s, %6$s, %7$s...", z, x, y, searchKey, page, aggrMethod, aggrPeriod));
-            results = controller.solveSpatialQuery(new Tile(x , y, z), page, aggrMethod, aggrPeriod,  metricId);
+            results = controller.solveSpatialQuery(qTile, page, aggrMethod, aggrPeriod,  metricId);
         } else {
             String errorText = String.format("[getAirQualityHistory] Invalid value for aggrPeriod (%1$s)", aggrPeriod);
             Response errorResp = Response.status(Response.Status.BAD_REQUEST)
@@ -96,32 +98,36 @@ public class QueryingService {
             System.out.println(errorText);
             throw new WebApplicationException(errorResp);
         }
-        List<String> columns = Arrays.asList("metricId", aggrMethod);
-        HashMap<String, String> metadata = new HashMap<>();
-        metadata.put("variable", "air_quality");
-        return prepareResponse(aggrMethod, results, metadata, columns, metricId, new GenericType<Long>(){});
+//        List<String> columns = Arrays.asList("metricId", aggrMethod);
+//        HashMap<String, String> metadata = new HashMap<>();
+//        metadata.put("variable", "air_quality");
+        return prepareResponse(aggrMethod, aggrPeriod, results, qTile, page, metricId, new GenericType<Long>(){});
     }
 
-    private <T> Response prepareResponse(String aggregate, Map payload, Map metadata, List<String> columns, String metricId, GenericType<T> keyType){
-        if (metricId.isEmpty()) {
-//                Map<Long, Double> finalResults = new TreeMap<>();
-            List data = new ArrayList();
-//            System.out.println("[prepareResponse] Incoming payload: " + payload);
-            payload.forEach((key, value) -> {
-                try {
-                    data.add(Arrays.asList(key, value.getClass().getField(aggregate).get(value)));
-//                        finalResults.put(key, (Double) value.getClass().getField(aggregate).get(value));
-                } catch (NoSuchFieldException | IllegalAccessException ex) {
-                    ex.printStackTrace();
-                    Response errorResp = Response.status(Response.Status.BAD_REQUEST)
-                            .entity(new ErrorMessage(ex.getMessage(), 400))
-                            .build();
-                    throw new WebApplicationException(errorResp);
-                }
-            });
-//            System.out.println("[prepareResponse] Outgoing data: " + data);
-            Message respMessage = new Message(columns, data, metadata);
-            return Response.ok(respMessage).build();
+    private <T> Response prepareResponse(String aggregate, String aggrPeriod,  Map payload, Tile tile, String page, String metricId, GenericType<T> keyType){
+        long pageLong = Instant.parse(page).toEpochMilli();
+        if (metricId.isEmpty()) { // response to client request (not to a request from another stream processor)
+            JSONLDBuilder builder = new JSONLDBuilder();
+            HashMap<String, Object> respMap = builder.buildTile(tile, pageLong, payload, aggregate, aggrPeriod);
+            return Response.ok(new GenericEntity<Map<String, Object>>(respMap){}).build();
+////                Map<Long, Double> finalResults = new TreeMap<>();
+//            List data = new ArrayList();
+////            System.out.println("[prepareResponse] Incoming payload: " + payload);
+//            payload.forEach((key, value) -> {
+//                try {
+//                    data.add(Arrays.asList(key, value.getClass().getField(aggregate).get(value)));
+////                        finalResults.put(key, (Double) value.getClass().getField(aggregate).get(value));
+//                } catch (NoSuchFieldException | IllegalAccessException ex) {
+//                    ex.printStackTrace();
+//                    Response errorResp = Response.status(Response.Status.BAD_REQUEST)
+//                            .entity(new ErrorMessage(ex.getMessage(), 400))
+//                            .build();
+//                    throw new WebApplicationException(errorResp);
+//                }
+//            });
+////            System.out.println("[prepareResponse] Outgoing data: " + data);
+//            Message respMessage = new Message(columns, data, metadata);
+//            return Response.ok(respMessage).build();
         }
 //                System.out.println("[prepareResponse] sending results");
 //                System.out.println(results);
