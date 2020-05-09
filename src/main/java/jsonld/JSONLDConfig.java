@@ -20,14 +20,14 @@ public class JSONLDConfig {
     private JSONLDConfig(){
         ObjectMapper mapper = new ObjectMapper();
         try {
-            System.out.println("Resource URL: " + ClassLoader.getSystemResource("jsonLDContext.json"));
+            System.out.println("Resource URL: " + JSONLDConfig.class.getResource("jsonLDContext.json"));
             CONTEXT = mapper.readValue(new File(
-                    ClassLoader.getSystemResource("jsonLDContext.json").getFile()), new TypeReference<HashMap<String, Object>>() {
+                    JSONLDConfig.class.getResource("jsonLDContext.json").getFile()), new TypeReference<HashMap<String, Object>>() {
             });
             System.out.println("INITIALIZING CONTEXT ... ");
             System.out.println(CONTEXT);
         } catch (IOException | NullPointerException e) {
-            System.out.println("Resource URL: " + ClassLoader.getSystemResource("jsonLDContext.json"));
+            System.out.println("Resource URL: " + JSONLDConfig.class.getResource("jsonLDContext.json"));
             e.printStackTrace();
         }
 
