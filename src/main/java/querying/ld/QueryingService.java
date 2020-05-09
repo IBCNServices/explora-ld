@@ -1,6 +1,7 @@
 package querying.ld;
 
 import jsonld.JSONLDBuilder;
+import jsonld.JSONLDConfig;
 import model.Aggregate;
 import model.ErrorMessage;
 import model.Message;
@@ -34,10 +35,13 @@ public class QueryingService {
     private final LongSerializer serializer = new LongSerializer();
     private static final Logger log = LoggerFactory.getLogger(QueryingService.class);
     private final QueryingController controller;
+    private final JSONLDConfig jsonLDConfig;
 
     public QueryingService(final KafkaStreams streams, final HostInfo hostInfo) {
         this.hostInfo = hostInfo;
         this.controller = new QueryingController(streams, hostInfo);
+        // Innitialize JSONLDConfig
+        jsonLDConfig = JSONLDConfig.getInstance();
     }
 
     @GET
