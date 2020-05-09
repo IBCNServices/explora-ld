@@ -60,17 +60,17 @@ public class JSONLDDocumentBuilder {
     }
 
     private String buildTileURI(Tile tile, String page, String aggrMethod, String aggrPeriod) {
-        return System.getenv("REST_ENDPOINT_HOSTNAME") + ":" + System.getenv("REST_ENDPOINT_PORT") + "data/" + tile.getZoom() + "/" + tile.getX() + "/" + tile.getY() + "?page=" + page + "&aggrMethod=" + aggrMethod + "&aggrPeriod=" + aggrPeriod;
+        return System.getenv("REST_ENDPOINT_HOSTNAME") + ":" + System.getenv("REST_ENDPOINT_PORT") + "/data/" + tile.getZoom() + "/" + tile.getX() + "/" + tile.getY() + "?page=" + page + "&aggrMethod=" + aggrMethod + "&aggrPeriod=" + aggrPeriod;
     }
 
     private HashMap<String, Object> buildDctermsInfo(Tile tile, String aggrMethod, String aggrPeriod) {
-        String id = System.getenv("REST_ENDPOINT_HOSTNAME") + ":" + System.getenv("REST_ENDPOINT_PORT") + "data/" + tile.getZoom() + "/" + tile.getX() + "/" + tile.getY() + "?aggrMethod=" + aggrMethod + "&aggrPeriod=" + aggrPeriod;
+        String id = System.getenv("REST_ENDPOINT_HOSTNAME") + ":" + System.getenv("REST_ENDPOINT_PORT") + "/data/" + tile.getZoom() + "/" + tile.getX() + "/" + tile.getY() + "?aggrMethod=" + aggrMethod + "&aggrPeriod=" + aggrPeriod;
         HashMap<String, Object> dcTermsInfoObj = new HashMap<>();
         HashMap<String, Object> dcIsPartOf = new HashMap<>();
         HashMap<String, Object> hydraSearch = new HashMap<>();
 
         hydraSearch.put("@type", "hydraIriTemplate");
-        hydraSearch.put("hydra:template", System.getenv("REST_ENDPOINT_HOSTNAME") + ":" + System.getenv("REST_ENDPOINT_PORT") + "data/" + tile.getZoom() + "/" + tile.getX() + "/" + tile.getY() + "?aggrMethod=" + aggrMethod + "&aggrPeriod=" + aggrPeriod);
+        hydraSearch.put("hydra:template", System.getenv("REST_ENDPOINT_HOSTNAME") + ":" + System.getenv("REST_ENDPOINT_PORT") + "/data/" + tile.getZoom() + "/" + tile.getX() + "/" + tile.getY() + "?aggrMethod=" + aggrMethod + "&aggrPeriod=" + aggrPeriod);
         hydraSearch.put("hydra:variableRepresentation", "hydra:BasicRepresentation");
         hydraSearch.put("hydra:mapping", this.buildHydraMapping());
         dcIsPartOf.put("@id", id);
