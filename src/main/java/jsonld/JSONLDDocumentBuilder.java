@@ -17,7 +17,7 @@ public class JSONLDDocumentBuilder {
     private LinkedHashMap<String, Object> buildTilesInfo(Tile tile, Long page, String aggrMethod, String aggrPeriod) {
         Date prevPage = this.getPrevOrNextDate(page, true, aggrPeriod);
         Date nextPage = this.getPrevOrNextDate(page, false, aggrPeriod);
-        LinkedHashMap result = new LinkedHashMap();
+        LinkedHashMap<String, Object> result = new LinkedHashMap<>();
         result.put("@id", this.buildTileURI(tile, this.getFormattedDate(new Date(page)), aggrMethod, aggrPeriod));
         result.put("tiles:zoom", tile.getZoom());
         result.put("tiles:longitudeTile", tile.getX());
@@ -83,8 +83,8 @@ public class JSONLDDocumentBuilder {
         return dcTermsInfoObj;
     }
 
-    private List<HashMap<String, Object>> buildHydraMapping() {
-        List<HashMap<String, Object>> result = new ArrayList<>();
+    private List<LinkedHashMap<String, Object>> buildHydraMapping() {
+        List<LinkedHashMap<String, Object>> result = new ArrayList<>();
 
         LinkedHashMap<String, Object> xMapping = new LinkedHashMap<>();
         LinkedHashMap<String, Object> yMapping = new LinkedHashMap<>();

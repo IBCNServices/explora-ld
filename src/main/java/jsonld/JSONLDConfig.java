@@ -12,11 +12,11 @@ import java.util.LinkedHashMap;
 
 public class JSONLDConfig {
     private static ObjectMapper mapper = new ObjectMapper();
-    public static LinkedHashMap CONTEXT;
+    public static LinkedHashMap<String, Object> CONTEXT;
 
     static {
         try {
-            CONTEXT = mapper.readValue(JSONLDConfig.class.getClassLoader().getResourceAsStream("jsonLDContext.json"), new TypeReference<HashMap<String, Object>>() {});
+            CONTEXT = mapper.readValue(JSONLDConfig.class.getClassLoader().getResourceAsStream("jsonLDContext.json"), new TypeReference<LinkedHashMap<String, Object>>() {});
         } catch (IOException e) {
             e.printStackTrace();
         }

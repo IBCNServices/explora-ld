@@ -109,8 +109,8 @@ public class QueryingService {
         long pageLong = Instant.parse(page).toEpochMilli();
         if (metricId.isEmpty()) { // response to client request (not to a request from another stream processor)
             JSONLDBuilder builder = new JSONLDBuilder();
-            HashMap<String, Object> respMap = builder.buildTile(tile, pageLong, payload, aggregate, aggrPeriod);
-            return Response.ok(new GenericEntity<Map<String, Object>>(respMap){}).build();
+            LinkedHashMap<String, Object> respMap = builder.buildTile(tile, pageLong, payload, aggregate, aggrPeriod);
+            return Response.ok(new GenericEntity<LinkedHashMap<String, Object>>(respMap){}).build();
 ////                Map<Long, Double> finalResults = new TreeMap<>();
 //            List data = new ArrayList();
 ////            System.out.println("[prepareResponse] Incoming payload: " + payload);

@@ -7,7 +7,7 @@ import java.util.*;
 
 public class JSONLDDataBuilder {
     public List build(Map<String, Aggregate> results, Long page, String aggrMethod, String aggrPeriod) {
-        ArrayList<LinkedHashMap> graph = new ArrayList<>();
+        ArrayList<LinkedHashMap<String, Object>> graph = new ArrayList<>();
         graph.add(this.buildFeatureOfInterest());
         graph.addAll(this.buildAggregateObservations(results, page, aggrMethod, aggrPeriod));
         return graph;
@@ -69,8 +69,8 @@ public class JSONLDDataBuilder {
         return sdf.format(refPage);
     }
 
-    private LinkedHashMap<String, String> buildFeatureOfInterest() {
-        return new LinkedHashMap<String, String>(){{
+    private LinkedHashMap<String, Object> buildFeatureOfInterest() {
+        return new LinkedHashMap<String, Object>(){{
             put("@id", JSONLDConfig.BASE_URL + JSONLDConfig.FEATURE_OF_INTEREST);
             put("@type", "sosa:FeatureOfInterest");
             put("label", JSONLDConfig.FEATURE_OF_INTEREST);
