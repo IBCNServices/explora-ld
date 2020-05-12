@@ -1,10 +1,8 @@
 package querying.ld;
 
 import jsonld.JSONLDBuilder;
-import jsonld.JSONLDConfig;
 import model.Aggregate;
 import model.ErrorMessage;
-import model.Message;
 import org.apache.kafka.common.serialization.LongSerializer;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.state.HostInfo;
@@ -17,16 +15,13 @@ import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import querying.ld.QueryingController;
 import util.AppConfig;
-import util.geoindex.QuadHash;
 import util.geoindex.Tile;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.*;
 import java.time.Instant;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Path("data")
 public class QueryingService {
@@ -102,14 +97,34 @@ public class QueryingService {
 //        List<String> columns = Arrays.asList("metricId", aggrMethod);
 //        HashMap<String, String> metadata = new HashMap<>();
 //        metadata.put("variable", "air_quality");
-        return prepareResponse(aggrMethod, aggrPeriod, results, qTile, page, metricId, new GenericType<Long>(){});
+        return prepareResponse(aggrMethod, aggrPeriod, results, qTile, page, metricId);
     }
 
-    private <T> Response prepareResponse(String aggregate, String aggrPeriod,  Map payload, Tile tile, String page, String metricId, GenericType<T> keyType){
+    private Response prepareResponse(String aggregate, String aggrPeriod,  TreeMap<String, Aggregate> payload, Tile tile, String page, String metricId){
         long pageLong = Instant.parse(page).toEpochMilli();
         if (metricId.isEmpty()) { // response to client request (not to a request from another stream processor)
             JSONLDBuilder builder = new JSONLDBuilder();
-            LinkedHashMap<String, Object> respMap = builder.buildTile(tile, pageLong, payload, aggregate, aggrPeriod);
+            Map<String, Object> filteredPayload = new LinkedHashMap<>();
+//            System.out.println("[prepareResponse] Incoming payload: " + payload);
+//            System.out.println("[prepareResponse] Requested aggregate: " + aggregate);
+            for (Map.Entry<String, Aggregate> entry : payload.entrySet()) {
+//                System.out.println("[prepareResponse] Inside for loop ...");
+                String key = entry.getKey();
+                Aggregate value = entry.getValue();
+                try {
+//                    System.out.println("[prepareResponse] Inside try-catch ...");
+                    filteredPayload.put(key, value.getClass().getField(aggregate).get(value));
+//                    System.out.println("[prepareResponse] Filtered payload: " + filteredPayload);
+//                        finalResults.put(key, (Double) value.getClass().getField(aggregate).get(value));
+                } catch (NoSuchFieldException | IllegalAccessException ex) {
+                    ex.printStackTrace();
+                    Response errorResp = Response.status(Response.Status.BAD_REQUEST)
+                            .entity(new ErrorMessage(ex.getMessage(), 400))
+                            .build();
+                    throw new WebApplicationException(errorResp);
+                }
+            }
+            LinkedHashMap<String, Object> respMap = builder.buildTile(tile, pageLong, filteredPayload, aggregate, aggrPeriod);
             return Response.ok(new GenericEntity<LinkedHashMap<String, Object>>(respMap){}).build();
 ////                Map<Long, Double> finalResults = new TreeMap<>();
 //            List data = new ArrayList();
@@ -132,7 +147,7 @@ public class QueryingService {
         }
 //                System.out.println("[prepareResponse] sending results");
 //                System.out.println(results);
-        return Response.ok(new GenericEntity<Map<T, Aggregate>>(payload){}).build();
+        return Response.ok(new GenericEntity<Map<String, Aggregate>>(payload){}).build();
     }
 
     /**

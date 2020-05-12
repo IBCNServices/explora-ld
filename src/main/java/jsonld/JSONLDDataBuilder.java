@@ -6,18 +6,18 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class JSONLDDataBuilder {
-    public List build(Map<String, Aggregate> results, Long page, String aggrMethod, String aggrPeriod) {
+    public List build(Map<String, Object> results, Long page, String aggrMethod, String aggrPeriod) {
         ArrayList<LinkedHashMap<String, Object>> graph = new ArrayList<>();
         graph.add(this.buildFeatureOfInterest());
         graph.addAll(this.buildAggregateObservations(results, page, aggrMethod, aggrPeriod));
         return graph;
     }
 
-    private List<LinkedHashMap<String, Object>> buildAggregateObservations(Map<String, Aggregate> results, Long page, String aggrMethod, String aggrPeriod) {
+    private List<LinkedHashMap<String, Object>> buildAggregateObservations(Map<String, Object> results, Long page, String aggrMethod, String aggrPeriod) {
         List<LinkedHashMap<String, Object>> resultList = new ArrayList<>();
-        for (Map.Entry<String, Aggregate> entry : results.entrySet()) {
+        for (Map.Entry<String, Object> entry : results.entrySet()) {
             String metricId = entry.getKey();
-            Aggregate value = entry.getValue();
+            Object value = entry.getValue();
             LinkedHashMap<String, Object> phenomenonTime = new LinkedHashMap<>();
             LinkedHashMap<String, String> hasBeginning = new LinkedHashMap<>();
             LinkedHashMap<String, String> hasEnd = new LinkedHashMap<>();
