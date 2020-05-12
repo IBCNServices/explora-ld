@@ -8,10 +8,11 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 
 public class JSONLDConfig {
     private static ObjectMapper mapper = new ObjectMapper();
-    public static HashMap CONTEXT;
+    public static LinkedHashMap CONTEXT;
 
     static {
         try {

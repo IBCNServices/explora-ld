@@ -7,21 +7,21 @@ import java.util.*;
 
 public class JSONLDDataBuilder {
     public List build(Map<String, Aggregate> results, Long page, String aggrMethod, String aggrPeriod) {
-        ArrayList<HashMap> graph = new ArrayList<>();
+        ArrayList<LinkedHashMap> graph = new ArrayList<>();
         graph.add(this.buildFeatureOfInterest());
         graph.addAll(this.buildAggregateObservations(results, page, aggrMethod, aggrPeriod));
         return graph;
     }
 
-    private List<HashMap<String, Object>> buildAggregateObservations(Map<String, Aggregate> results, Long page, String aggrMethod, String aggrPeriod) {
-        List<HashMap<String, Object>> resultList = new ArrayList<>();
+    private List<LinkedHashMap<String, Object>> buildAggregateObservations(Map<String, Aggregate> results, Long page, String aggrMethod, String aggrPeriod) {
+        List<LinkedHashMap<String, Object>> resultList = new ArrayList<>();
         for (Map.Entry<String, Aggregate> entry : results.entrySet()) {
             String metricId = entry.getKey();
             Aggregate value = entry.getValue();
-            HashMap<String, Object> phenomenonTime = new HashMap<>();
-            HashMap<String, String> hasBeginning = new HashMap<>();
-            HashMap<String, String> hasEnd = new HashMap<>();
-            HashMap<String, Object> resultJSON = new HashMap<>();
+            LinkedHashMap<String, Object> phenomenonTime = new LinkedHashMap<>();
+            LinkedHashMap<String, String> hasBeginning = new LinkedHashMap<>();
+            LinkedHashMap<String, String> hasEnd = new LinkedHashMap<>();
+            LinkedHashMap<String, Object> resultJSON = new LinkedHashMap<>();
 
             hasBeginning.put("inXSDDateTimeStamp", this.getCurrOrNextDate(page, false, aggrPeriod));
             hasEnd.put("inXSDDateTimeStamp", this.getCurrOrNextDate(page, true, aggrPeriod));
@@ -69,8 +69,8 @@ public class JSONLDDataBuilder {
         return sdf.format(refPage);
     }
 
-    private HashMap<String, String> buildFeatureOfInterest() {
-        return new HashMap<String, String>(){{
+    private LinkedHashMap<String, String> buildFeatureOfInterest() {
+        return new LinkedHashMap<String, String>(){{
             put("@id", JSONLDConfig.BASE_URL + JSONLDConfig.FEATURE_OF_INTEREST);
             put("@type", "sosa:FeatureOfInterest");
             put("label", JSONLDConfig.FEATURE_OF_INTEREST);

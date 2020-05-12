@@ -7,17 +7,17 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class JSONLDDocumentBuilder {
-    public HashMap<String, Object> buildTile(Tile tile, Long page, String aggrMethod, String aggrPeriod) {
-        HashMap<String, Object> tileInfoObj = this.buildTilesInfo(tile, page, aggrMethod, aggrPeriod);
-        HashMap<String, Object> dcTermsInfoObj = this.buildDctermsInfo(tile, aggrMethod, aggrPeriod);
+    public LinkedHashMap<String, Object> buildTile(Tile tile, Long page, String aggrMethod, String aggrPeriod) {
+        LinkedHashMap<String, Object> tileInfoObj = this.buildTilesInfo(tile, page, aggrMethod, aggrPeriod);
+        LinkedHashMap<String, Object> dcTermsInfoObj = this.buildDctermsInfo(tile, aggrMethod, aggrPeriod);
         dcTermsInfoObj.forEach((k, v) -> tileInfoObj.merge(k, v, (v1, v2) -> v2));
         return tileInfoObj;
     }
 
-    private HashMap<String, Object> buildTilesInfo(Tile tile, Long page, String aggrMethod, String aggrPeriod) {
+    private LinkedHashMap<String, Object> buildTilesInfo(Tile tile, Long page, String aggrMethod, String aggrPeriod) {
         Date prevPage = this.getPrevOrNextDate(page, true, aggrPeriod);
         Date nextPage = this.getPrevOrNextDate(page, false, aggrPeriod);
-        HashMap result = new HashMap();
+        LinkedHashMap result = new LinkedHashMap();
         result.put("@id", this.buildTileURI(tile, this.getFormattedDate(new Date(page)), aggrMethod, aggrPeriod));
         result.put("tiles:zoom", tile.getZoom());
         result.put("tiles:longitudeTile", tile.getX());
@@ -63,11 +63,11 @@ public class JSONLDDocumentBuilder {
         return "http://" + System.getenv("REST_ENDPOINT_HOSTNAME") + ":" + System.getenv("REST_ENDPOINT_PORT") + "/data/" + tile.getZoom() + "/" + tile.getX() + "/" + tile.getY() + "?page=" + page + "&aggrMethod=" + aggrMethod + "&aggrPeriod=" + aggrPeriod;
     }
 
-    private HashMap<String, Object> buildDctermsInfo(Tile tile, String aggrMethod, String aggrPeriod) {
+    private LinkedHashMap<String, Object> buildDctermsInfo(Tile tile, String aggrMethod, String aggrPeriod) {
         String id = "http://" + System.getenv("REST_ENDPOINT_HOSTNAME") + ":" + System.getenv("REST_ENDPOINT_PORT") + "/data/" + tile.getZoom() + "/" + tile.getX() + "/" + tile.getY() + "?aggrMethod=" + aggrMethod + "&aggrPeriod=" + aggrPeriod;
-        HashMap<String, Object> dcTermsInfoObj = new HashMap<>();
-        HashMap<String, Object> dcIsPartOf = new HashMap<>();
-        HashMap<String, Object> hydraSearch = new HashMap<>();
+        LinkedHashMap<String, Object> dcTermsInfoObj = new LinkedHashMap<>();
+        LinkedHashMap<String, Object> dcIsPartOf = new LinkedHashMap<>();
+        LinkedHashMap<String, Object> hydraSearch = new LinkedHashMap<>();
 
         hydraSearch.put("@type", "hydraIriTemplate");
         hydraSearch.put("hydra:template", "http://" + System.getenv("REST_ENDPOINT_HOSTNAME") + ":" + System.getenv("REST_ENDPOINT_PORT") + "/data/" + tile.getZoom() + "/" + tile.getX() + "/" + tile.getY() + "?aggrMethod=" + aggrMethod + "&aggrPeriod=" + aggrPeriod);
@@ -86,11 +86,11 @@ public class JSONLDDocumentBuilder {
     private List<HashMap<String, Object>> buildHydraMapping() {
         List<HashMap<String, Object>> result = new ArrayList<>();
 
-        HashMap<String, Object> xMapping = new HashMap<>();
-        HashMap<String, Object> yMapping = new HashMap<>();
-        HashMap<String, Object> pageMapping = new HashMap<>();
-        HashMap<String, Object> aggrMethodMapping = new HashMap<>();
-        HashMap<String, Object> aggrPeriodMapping = new HashMap<>();
+        LinkedHashMap<String, Object> xMapping = new LinkedHashMap<>();
+        LinkedHashMap<String, Object> yMapping = new LinkedHashMap<>();
+        LinkedHashMap<String, Object> pageMapping = new LinkedHashMap<>();
+        LinkedHashMap<String, Object> aggrMethodMapping = new LinkedHashMap<>();
+        LinkedHashMap<String, Object> aggrPeriodMapping = new LinkedHashMap<>();
 
         xMapping.put("@type", "hydra:IriTemplateMapping");
         xMapping.put("hydra:variable", "x");
