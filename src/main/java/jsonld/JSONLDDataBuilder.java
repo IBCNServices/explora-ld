@@ -81,7 +81,7 @@ public class JSONLDDataBuilder {
     private List<String> convertSensors(HashSet<String> sensors) {
         List<String> sensorList = new ArrayList<>();
         for (String sensorId : sensors) {
-            sensors.add(JSONLDConfig.BASE_URL + sensorId);
+            sensorList.add(JSONLDConfig.BASE_URL + sensorId);
         }
         return sensorList;
     }
