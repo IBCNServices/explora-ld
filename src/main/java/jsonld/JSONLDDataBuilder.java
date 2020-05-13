@@ -6,18 +6,18 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class JSONLDDataBuilder {
-    public List build(Map<String, Object> results, Long page, String aggrMethod, String aggrPeriod) {
+    public List<LinkedHashMap<String, Object>> build(Map<String, HashMap> results, Long page, String aggrMethod, String aggrPeriod) {
         ArrayList<LinkedHashMap<String, Object>> graph = new ArrayList<>();
         graph.add(this.buildFeatureOfInterest());
         graph.addAll(this.buildAggregateObservations(results, page, aggrMethod, aggrPeriod));
         return graph;
     }
 
-    private List<LinkedHashMap<String, Object>> buildAggregateObservations(Map<String, Object> results, Long page, String aggrMethod, String aggrPeriod) {
+    private List<LinkedHashMap<String, Object>> buildAggregateObservations(Map<String, HashMap> results, Long page, String aggrMethod, String aggrPeriod) {
         List<LinkedHashMap<String, Object>> resultList = new ArrayList<>();
-        for (Map.Entry<String, Object> entry : results.entrySet()) {
+        for (Map.Entry<String, HashMap> entry : results.entrySet()) {
             String metricId = entry.getKey();
-            Object value = entry.getValue();
+            HashMap value = entry.getValue();
             LinkedHashMap<String, Object> phenomenonTime = new LinkedHashMap<>();
             LinkedHashMap<String, String> hasBeginning = new LinkedHashMap<>();
             LinkedHashMap<String, String> hasEnd = new LinkedHashMap<>();
@@ -30,10 +30,11 @@ public class JSONLDDataBuilder {
 
             resultJSON.put("@id", JSONLDConfig.BASE_URL + metricId + "/" + page);
             resultJSON.put("@type", "sosa:Observation");
-            resultJSON.put("hasSimpleResult", value);
+            resultJSON.put("hasSimpleResult", value.get("value"));
             resultJSON.put("resultTime", this.getCurrOrNextDate(page, false, aggrPeriod));
             resultJSON.put("phenomenonTime", phenomenonTime);
             resultJSON.put("observedProperty", JSONLDConfig.BASE_URL + metricId);
+            resultJSON.put("madeBySensor", this.convertSensors((HashSet<String>) value.get("sensors")));
             resultJSON.put("usedProcedure", JSONLDConfig.BASE_URL + "id/" + aggrMethod);
             resultJSON.put("hasFeatureOfInterest", JSONLDConfig.BASE_URL + JSONLDConfig.FEATURE_OF_INTEREST);
             resultList.add(resultJSON);
@@ -75,5 +76,13 @@ public class JSONLDDataBuilder {
             put("@type", "sosa:FeatureOfInterest");
             put("label", JSONLDConfig.FEATURE_OF_INTEREST);
         }};
+    }
+
+    private List<String> convertSensors(HashSet<String> sensors) {
+        List<String> sensorList = new ArrayList<>();
+        for (String sensorId : sensors) {
+            sensors.add(JSONLDConfig.BASE_URL + sensorId);
+        }
+        return sensorList;
     }
 }

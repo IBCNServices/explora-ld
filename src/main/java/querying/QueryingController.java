@@ -2,6 +2,7 @@ package querying;
 
 import com.github.davidmoten.geo.Base32;
 import com.github.davidmoten.geo.GeoHash;
+import com.google.common.collect.Sets;
 import model.Aggregate;
 import model.AggregateValueTuple;
 import model.ErrorMessage;
@@ -30,6 +31,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.apache.commons.lang3.time.DateUtils.truncate;
 
@@ -222,9 +224,9 @@ public class QueryingController {
         while (iterator.hasNext()) {
             KeyValue<String, AggregateValueTuple> aggFromStore = iterator.next();
 //            System.out.println("Aggregate for " + aggFromStore.key + ": " + aggFromStore.value);
-            Aggregate agg = new Aggregate(aggFromStore.value.count, aggFromStore.value.sum, aggFromStore.value.avg);
+            Aggregate agg = new Aggregate(aggFromStore.value.count, aggFromStore.value.sum, aggFromStore.value.avg, aggFromStore.value.sensed_by);
             aggregateReadings.merge(aggFromStore.value.ts, agg,
-                    (a1, a2) -> new Aggregate(a1.count + a2.count, a1.sum + a2.sum, (a1.sum + a2.sum)/(a1.count + a2.count)));
+                    (a1, a2) -> new Aggregate(a1.count + a2.count, a1.sum + a2.sum, (a1.sum + a2.sum)/(a1.count + a2.count), new HashSet<>(Stream.concat(a1.sensed_by.stream(), a2.sensed_by.stream()).collect(Collectors.toSet()))));
         }
         iterator.close();
         return aggregateReadings;
@@ -255,9 +257,9 @@ public class QueryingController {
         AggregateValueTuple aggregateVT = viewStore.get(searchKey);
         if (aggregateVT != null) {
 //            System.out.println("Aggregate for " + ghPart + ": " + aggregateVT);
-            Aggregate agg = new Aggregate(aggregateVT.count, aggregateVT.sum, aggregateVT.avg);
+            Aggregate agg = new Aggregate(aggregateVT.count, aggregateVT.sum, aggregateVT.avg, aggregateVT.sensed_by);
             aggregateReadings.merge(aggregateVT.gh, agg,
-                    (a1, a2) -> new Aggregate(a1.count + a2.count, a1.sum + a2.sum, (a1.sum + a2.sum) / (a1.count + a2.count)));
+                    (a1, a2) -> new Aggregate(a1.count + a2.count, a1.sum + a2.sum, (a1.sum + a2.sum) / (a1.count + a2.count), new HashSet<>(Stream.concat(a1.sensed_by.stream(), a2.sensed_by.stream()).collect(Collectors.toSet()))));
         }
         return aggregateReadings;
     }
@@ -274,9 +276,9 @@ public class QueryingController {
             AggregateValueTuple aggregateVT = viewStore.get(searchKey);
             if (aggregateVT != null) {
 //                System.out.println("Aggregate for " + ghPart + ": " + aggregateVT);
-                Aggregate agg = new Aggregate(aggregateVT.count, aggregateVT.sum, aggregateVT.avg);
+                Aggregate agg = new Aggregate(aggregateVT.count, aggregateVT.sum, aggregateVT.avg, aggregateVT.sensed_by);
                 aggregateReadings.merge(aggregateVT.gh, agg,
-                        (a1, a2) -> new Aggregate(a1.count + a2.count, a1.sum + a2.sum, (a1.sum + a2.sum)/(a1.count + a2.count)));
+                        (a1, a2) -> new Aggregate(a1.count + a2.count, a1.sum + a2.sum, (a1.sum + a2.sum)/(a1.count + a2.count), new HashSet<>(Stream.concat(a1.sensed_by.stream(), a2.sensed_by.stream()).collect(Collectors.toSet()))));
             }
         }
 //        final String fromK = StringUtils.rightPad(StringUtils.truncate(geohashPrefix, geohashPrecision), geohashPrecision, "0") + "#" + toFormattedTimestamp(ts, ZoneId.systemDefault());

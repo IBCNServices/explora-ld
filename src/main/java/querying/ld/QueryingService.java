@@ -104,7 +104,7 @@ public class QueryingService {
         long pageLong = Instant.parse(page).toEpochMilli();
         if (metricId.isEmpty()) { // response to client request (not to a request from another stream processor)
             JSONLDBuilder builder = new JSONLDBuilder();
-            Map<String, Object> filteredPayload = new LinkedHashMap<>();
+            Map<String, HashMap> filteredPayload = new LinkedHashMap<>();
 //            System.out.println("[prepareResponse] Incoming payload: " + payload);
 //            System.out.println("[prepareResponse] Requested aggregate: " + aggregate);
             for (Map.Entry<String, Aggregate> entry : payload.entrySet()) {
@@ -113,7 +113,10 @@ public class QueryingService {
                 Aggregate value = entry.getValue();
                 try {
 //                    System.out.println("[prepareResponse] Inside try-catch ...");
-                    filteredPayload.put(key, value.getClass().getField(aggregate).get(value));
+                    HashMap<String, Object> aggrMap = new HashMap<>();
+                    aggrMap.put("value", value.getClass().getField(aggregate).get(value));
+                    aggrMap.put("sensors", value.sensed_by);
+                    filteredPayload.put(key, aggrMap);
 //                    System.out.println("[prepareResponse] Filtered payload: " + filteredPayload);
 //                        finalResults.put(key, (Double) value.getClass().getField(aggregate).get(value));
                 } catch (NoSuchFieldException | IllegalAccessException ex) {
