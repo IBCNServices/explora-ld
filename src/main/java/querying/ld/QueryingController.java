@@ -1,19 +1,13 @@
 package querying.ld;
 
-import com.github.davidmoten.geo.Base32;
-import com.github.davidmoten.geo.GeoHash;
+import com.google.common.collect.Sets;
 import model.Aggregate;
 import model.AggregateValueTuple;
 import model.ErrorMessage;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.kafka.common.serialization.Serdes;
-import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.KafkaStreams;
-import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.state.HostInfo;
-import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.QueryableStoreTypes;
 import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
 import org.glassfish.jersey.jackson.JacksonFeature;
@@ -24,7 +18,6 @@ import util.MetadataService;
 import util.geoindex.QuadHash;
 import util.geoindex.Tile;
 
-import javax.ws.rs.NotFoundException;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
@@ -36,8 +29,10 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.*;
+import java.util.HashSet;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class QueryingController {
 
@@ -114,9 +109,9 @@ public class QueryingController {
             //assert aggregateVT != null : "Data not found for the the provided parameters";
             System.out.println("[getLocalAggregate] aggregateVT(searchKey)=" + aggregateVT);
             if(aggregateVT != null) {
-                Aggregate agg = new Aggregate(aggregateVT.count, aggregateVT.sum, aggregateVT.avg);
+                Aggregate agg = new Aggregate(aggregateVT.count, aggregateVT.sum, aggregateVT.avg, aggregateVT.sensed_by);
                 aggregateReadings.merge(metricId, agg,
-                        (a1, a2) -> new Aggregate(a1.count + a2.count, a1.sum + a2.sum, (a1.sum + a2.sum)/(a1.count + a2.count)));
+                        (a1, a2) -> new Aggregate(a1.count + a2.count, a1.sum + a2.sum, (a1.sum + a2.sum)/(a1.count + a2.count), new HashSet<>(Stream.concat(a1.sensed_by.stream(), a2.sensed_by.stream()).collect(Collectors.toSet()))));
             }
 //            System.out.println("[getLocalAggregate] aggregateReadings=" + aggregateReadings);
             return aggregateReadings;

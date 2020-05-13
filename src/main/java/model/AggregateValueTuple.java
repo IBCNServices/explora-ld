@@ -1,5 +1,7 @@
 package model;
 
+import java.util.HashSet;
+
 public class AggregateValueTuple extends Aggregate{
     public String gh_ts;
     public String gh;
@@ -9,8 +11,8 @@ public class AggregateValueTuple extends Aggregate{
         super();
     }
 
-    public AggregateValueTuple(String gh_ts, String gh, Long ts, Long count, Double sum, Double avg) {
-        super(count, sum, avg);
+    public AggregateValueTuple(String gh_ts, String gh, Long ts, Long count, Double sum, Double avg, HashSet<String> sensed_by) {
+        super(count, sum, avg, sensed_by);
         this.gh_ts = gh_ts;
         this.gh = gh;
         this.ts = ts;
@@ -25,6 +27,7 @@ public class AggregateValueTuple extends Aggregate{
                 ", count=" + count +
                 ", sum=" + sum +
                 ", avg=" + avg +
+                ", sensed_by=" + sensed_by +
                 '}';
     }
 }
