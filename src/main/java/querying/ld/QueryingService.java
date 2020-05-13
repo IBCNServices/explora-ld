@@ -8,8 +8,10 @@ import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.state.HostInfo;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
+import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.servlets.CrossOriginFilter;
 import org.glassfish.jersey.jackson.JacksonFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
@@ -18,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import util.AppConfig;
 import util.geoindex.Tile;
 
+import javax.servlet.DispatcherType;
 import javax.ws.rs.*;
 import javax.ws.rs.core.*;
 import java.time.Instant;
@@ -171,6 +174,9 @@ public class QueryingService {
         final ServletContainer sc = new ServletContainer(rc);
         final ServletHolder holder = new ServletHolder(sc);
         context.addServlet(holder, "/*");
+        holder.setInitParameter("jersey.config.server.provider.classnames", QueryingService.class.getCanonicalName());
+        FilterHolder filterHolder = context.addFilter(CrossOriginFilter.class, "/*", EnumSet.of(DispatcherType.REQUEST));
+        filterHolder.setInitParameter("allowedOrigins", "*");
 
         final ServerConnector connector = new ServerConnector(jettyServer);
         connector.setHost(hostInfo.host());
