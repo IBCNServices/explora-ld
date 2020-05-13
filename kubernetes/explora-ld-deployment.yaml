@@ -14,6 +14,9 @@ data:
   PRECISION: '14'
   #REST_ENDPOINT_HOSTNAME: '0.0.0.0'
   REST_ENDPOINT_PORT: '7070'
+  ENTRYPOINT_HOST: '10.10.137.122'
+  ENTRYPOINT_PORT: '30070'
+
 
 ---
 apiVersion: extensions/v1beta1

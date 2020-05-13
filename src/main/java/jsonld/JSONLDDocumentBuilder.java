@@ -60,17 +60,17 @@ public class JSONLDDocumentBuilder {
     }
 
     private String buildTileURI(Tile tile, String page, String aggrMethod, String aggrPeriod) {
-        return "http://" + System.getenv("REST_ENDPOINT_HOSTNAME") + ":" + System.getenv("REST_ENDPOINT_PORT") + "/data/" + tile.getZoom() + "/" + tile.getX() + "/" + tile.getY() + "?page=" + page + "&aggrMethod=" + aggrMethod + "&aggrPeriod=" + aggrPeriod;
+        return "http://" + System.getenv("ENTRYPOINT_HOST") + ":" + System.getenv("ENTRYPOINT_PORT") + "/data/" + tile.getZoom() + "/" + tile.getX() + "/" + tile.getY() + "?page=" + page + "&aggrMethod=" + aggrMethod + "&aggrPeriod=" + aggrPeriod;
     }
 
     private LinkedHashMap<String, Object> buildDctermsInfo(Tile tile, String aggrMethod, String aggrPeriod) {
-        String id = "http://" + System.getenv("REST_ENDPOINT_HOSTNAME") + ":" + System.getenv("REST_ENDPOINT_PORT") + "/data/" + tile.getZoom() + "/" + tile.getX() + "/" + tile.getY() + "?aggrMethod=" + aggrMethod + "&aggrPeriod=" + aggrPeriod;
+        String id = "http://" + System.getenv("ENTRYPOINT_HOST") + ":" + System.getenv("ENTRYPOINT_PORT") + "/data/" + tile.getZoom() + "/" + tile.getX() + "/" + tile.getY() + "?aggrMethod=" + aggrMethod + "&aggrPeriod=" + aggrPeriod;
         LinkedHashMap<String, Object> dcTermsInfoObj = new LinkedHashMap<>();
         LinkedHashMap<String, Object> dcIsPartOf = new LinkedHashMap<>();
         LinkedHashMap<String, Object> hydraSearch = new LinkedHashMap<>();
 
         hydraSearch.put("@type", "hydraIriTemplate");
-        hydraSearch.put("hydra:template", "http://" + System.getenv("REST_ENDPOINT_HOSTNAME") + ":" + System.getenv("REST_ENDPOINT_PORT") + "/data/" + tile.getZoom() + "/" + tile.getX() + "/" + tile.getY() + "?aggrMethod=" + aggrMethod + "&aggrPeriod=" + aggrPeriod);
+        hydraSearch.put("hydra:template", "http://" + System.getenv("ENTRYPOINT_HOST") + ":" + System.getenv("ENTRYPOINT_PORT") + "/data/" + tile.getZoom() + "/" + tile.getX() + "/" + tile.getY() + "?aggrMethod=" + aggrMethod + "&aggrPeriod=" + aggrPeriod);
         hydraSearch.put("hydra:variableRepresentation", "hydra:BasicRepresentation");
         hydraSearch.put("hydra:mapping", this.buildHydraMapping());
         dcIsPartOf.put("@id", id);
