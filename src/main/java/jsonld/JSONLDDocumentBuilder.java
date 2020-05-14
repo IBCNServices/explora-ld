@@ -70,7 +70,7 @@ public class JSONLDDocumentBuilder {
         LinkedHashMap<String, Object> hydraSearch = new LinkedHashMap<>();
 
         hydraSearch.put("@type", "hydraIriTemplate");
-        hydraSearch.put("hydra:template", "http://" + System.getenv("ENTRYPOINT_HOST") + ":" + System.getenv("ENTRYPOINT_PORT") + "/data/" + tile.getZoom() + "/" + tile.getX() + "/" + tile.getY() + "?aggrMethod=" + aggrMethod + "&aggrPeriod=" + aggrPeriod);
+        hydraSearch.put("hydra:template", "http://" + System.getenv("ENTRYPOINT_HOST") + ":" + System.getenv("ENTRYPOINT_PORT") + "/data/14/{x}/{y}{?page,aggrMethod,aggrPeriod}");
         hydraSearch.put("hydra:variableRepresentation", "hydra:BasicRepresentation");
         hydraSearch.put("hydra:mapping", this.buildHydraMapping());
         dcIsPartOf.put("@id", id);
