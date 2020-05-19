@@ -114,7 +114,7 @@ public class QueryingController {
 
 
     public TreeMap<String, Aggregate> getLocalAggregates4MetricAndRange(String storeName, Tile quadTile, String page, String aggrMethod, String aggrPeriod, String metricId) {
-        System.out.println("[getLocalAggregates4MetricAndRange] look in the local store for metric: " + metricId);
+        System.out.println("[getLocalAggregates4MetricAndRange] look in the local store for metric: " + metricId + " (" + storeName + ")");
         final ReadOnlyKeyValueStore<String, AggregateValueTuple> viewStore = streams.store(storeName,
                 QueryableStoreTypes.keyValueStore());
         String quadKey = QuadHash.getQuadKey(quadTile);
