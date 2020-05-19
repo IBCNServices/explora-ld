@@ -21,9 +21,13 @@ import util.AppConfig;
 import util.geoindex.Tile;
 
 import javax.servlet.DispatcherType;
+import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.*;
 import javax.ws.rs.core.*;
+import java.net.URI;
+import java.text.SimpleDateFormat;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.*;
 
 @Path("data")
@@ -33,10 +37,15 @@ public class QueryingService {
     private final LongSerializer serializer = new LongSerializer();
     private static final Logger log = LoggerFactory.getLogger(QueryingService.class);
     private final QueryingController controller;
+    private String lDFragmentResolution;
 
     public QueryingService(final KafkaStreams streams, final HostInfo hostInfo) {
         this.hostInfo = hostInfo;
         this.controller = new QueryingController(streams, hostInfo);
+        this.lDFragmentResolution = System.getenv("LD_FRAGMENT_RES") != null ? System.getenv("LD_FRAGMENT_RES") : "hour";
+        if (!AppConfig.SUPPORTED_RESOLUTIONS.contains(this.lDFragmentResolution)) {
+            this.lDFragmentResolution = "hour";
+        }
     }
 
     @GET
@@ -81,6 +90,19 @@ public class QueryingService {
                     .build();
             System.out.println(errorText);
             throw new WebApplicationException(errorResp);
+        }
+
+        Instant pageInstant = Instant.parse(page);
+        int pageMins = pageInstant.atZone(ZoneOffset.UTC).getMinute();
+        int pageSecs = pageInstant.atZone(ZoneOffset.UTC).getSecond();
+
+        if (pageMins > 0 || pageSecs > 0) {
+            Date pageDate = new Date(controller.truncateTS(pageInstant.toEpochMilli(), this.lDFragmentResolution));
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
+            sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+            String pageDateStr = sdf.format(pageDate);
+            String urlRedirect = String.format("/data/%d/%d/%d?page=%s&aggrMethod=%s&aggrPeriod=%s", z, x, y, pageDateStr, aggrMethod, aggrPeriod);
+            return Response.seeOther(URI.create(urlRedirect)).build();
         }
 
 
