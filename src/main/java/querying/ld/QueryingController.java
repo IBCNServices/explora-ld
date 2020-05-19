@@ -128,7 +128,7 @@ public class QueryingController {
         KeyValueIterator<String, AggregateValueTuple> iterator =  viewStore.range(fromK, toK);
         while (iterator.hasNext()) {
             KeyValue<String, AggregateValueTuple> aggFromStore = iterator.next();
-//                            System.out.println("Aggregate for " + aggFromStore.key + ": " + aggFromStore.value);
+            System.out.println("Aggregate for " + aggFromStore.key + ": " + aggFromStore.value);
             Aggregate agg = new Aggregate(aggFromStore.value.count, aggFromStore.value.sum, aggFromStore.value.avg, aggFromStore.value.sensed_by);
             aggregateReadings.merge(metricId + "#" + aggFromStore.value.ts, agg,
                     (a1, a2) -> new Aggregate(a1.count + a2.count, a1.sum + a2.sum, (a1.sum + a2.sum)/(a1.count + a2.count), new HashSet<>(Stream.concat(a1.sensed_by.stream(), a2.sensed_by.stream()).collect(Collectors.toSet()))));
