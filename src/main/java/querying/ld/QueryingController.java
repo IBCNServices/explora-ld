@@ -111,15 +111,13 @@ public class QueryingController {
         return aggCollect.getAggregateMap();
     }
 
-
-
     public TreeMap<String, Aggregate> getLocalAggregates4MetricAndRange(String storeName, Tile quadTile, String page, String aggrMethod, String aggrPeriod, String metricId) {
         System.out.println("[getLocalAggregates4MetricAndRange] look in the local store for metric: " + metricId + " (" + storeName + ")");
         final ReadOnlyKeyValueStore<String, AggregateValueTuple> viewStore = streams.store(storeName,
                 QueryableStoreTypes.keyValueStore());
         String quadKey = QuadHash.getQuadKey(quadTile);
         final long fromTimestamp = Instant.parse(page).toEpochMilli();
-        final long toTimestamp = fromTimestamp + getLDFragmentInterval();
+        final long toTimestamp = fromTimestamp + getLDFragmentInterval() - getPeriodInterval(aggrPeriod);
         final String fromK = quadKey + "#" + toFormattedTimestamp(fromTimestamp, ZoneOffset.UTC);
         final String toK = quadKey + "#" + toFormattedTimestamp(toTimestamp, ZoneOffset.UTC);
         System.out.println("fromK=" + fromK);
@@ -135,6 +133,19 @@ public class QueryingController {
         }
         iterator.close();
         return aggregateReadings;
+    }
+
+    public static long getPeriodInterval(String timePeriod) {
+        switch (timePeriod) {
+            case "min":
+                return 60000L;
+            case "day":
+                return 86400000L;
+            case "month":
+                return 2592000000L;
+            default:
+                return 3600000L;
+        }
     }
 
 //    public TreeMap<String, Aggregate> fetchAggregate(HostStoreInfo host, Tile quadTile, String page, String aggrMethod, String aggrPeriod, String metric) {
@@ -190,7 +201,7 @@ public class QueryingController {
 //        }
 //    }
 
-    public Long truncateTS(Long timestamp, String resolution) {
+    public long truncateTS(long timestamp, String resolution) {
         try{
             ZonedDateTime tsDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), ZoneId.systemDefault());
             switch (resolution) {
@@ -215,16 +226,7 @@ public class QueryingController {
 
     public static Long getLDFragmentInterval() {
         String lDFragmentResolution = System.getenv("LD_FRAGMENT_RES") != null ? System.getenv("LD_FRAGMENT_RES") : "hour";
-        switch (lDFragmentResolution) {
-            case "min":
-                return 60000L;
-            case "day":
-                return 86400000L;
-            case "month":
-                return 2592000000L;
-            default:
-                return 3600000L;
-        }
+        return getPeriodInterval(lDFragmentResolution);
     }
 
     private static String toFormattedTimestamp(Long timestamp, ZoneId zoneId) {
