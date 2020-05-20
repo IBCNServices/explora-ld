@@ -1,6 +1,7 @@
 package jsonld;
 
 import org.apache.kafka.common.protocol.types.Field;
+import util.AppConfig;
 import util.geoindex.Tile;
 
 import java.text.SimpleDateFormat;
@@ -15,8 +16,8 @@ public class JSONLDDocumentBuilder {
     }
 
     private LinkedHashMap<String, Object> buildTilesInfo(Tile tile, Long page, String aggrMethod, String aggrPeriod) {
-        Date prevPage = this.getPrevOrNextDate(page, true, aggrPeriod);
-        Date nextPage = this.getPrevOrNextDate(page, false, aggrPeriod);
+        Date prevPage = this.getPrevOrNextDate(page, true, AppConfig.LD_FRAGMENT_RES);
+        Date nextPage = this.getPrevOrNextDate(page, false, AppConfig.LD_FRAGMENT_RES);
         LinkedHashMap<String, Object> result = new LinkedHashMap<>();
         result.put("@id", this.buildTileURI(tile, this.getFormattedDate(new Date(page)), aggrMethod, aggrPeriod));
         result.put("tiles:zoom", tile.getZoom());

@@ -13,6 +13,7 @@ import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.QueryableStoreTypes;
 import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
 import org.glassfish.jersey.jackson.JacksonFeature;
+import org.glassfish.jersey.jaxb.internal.XmlJaxbElementProvider;
 import sun.reflect.generics.tree.Tree;
 import util.Aggregator;
 import util.AppConfig;
@@ -117,7 +118,7 @@ public class QueryingController {
                 QueryableStoreTypes.keyValueStore());
         String quadKey = QuadHash.getQuadKey(quadTile);
         final long fromTimestamp = Instant.parse(page).toEpochMilli();
-        final long toTimestamp = fromTimestamp + getLDFragmentInterval() - getPeriodInterval(aggrPeriod);
+        final long toTimestamp = fromTimestamp + getPeriodInterval(AppConfig.LD_FRAGMENT_RES) - getPeriodInterval(aggrPeriod); // to exclude next fragment from the look-up
         final String fromK = quadKey + "#" + toFormattedTimestamp(fromTimestamp, ZoneOffset.UTC);
         final String toK = quadKey + "#" + toFormattedTimestamp(toTimestamp, ZoneOffset.UTC);
         System.out.println("fromK=" + fromK);
@@ -222,11 +223,6 @@ public class QueryingController {
             e.printStackTrace();
             return timestamp;
         }
-    }
-
-    public static Long getLDFragmentInterval() {
-        String lDFragmentResolution = System.getenv("LD_FRAGMENT_RES") != null ? System.getenv("LD_FRAGMENT_RES") : "hour";
-        return getPeriodInterval(lDFragmentResolution);
     }
 
     private static String toFormattedTimestamp(Long timestamp, ZoneId zoneId) {
