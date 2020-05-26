@@ -21,14 +21,6 @@ import com.github.davidmoten.geo.LatLong;
 import model.AggregateValueTuple;
 import model.AirQualityKeyedReading;
 import model.AirQualityReading;
-import org.apache.kafka.streams.*;
-import org.apache.kafka.streams.state.HostInfo;
-import querying.ld.QueryingService;
-import util.AppConfig;
-import util.geoindex.QuadHash;
-import util.TSExtractor;
-import util.serdes.JsonPOJODeserializer;
-import util.serdes.JsonPOJOSerializer;
 import org.apache.commons.cli.*;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.Deserializer;
@@ -36,8 +28,19 @@ import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.common.utils.Bytes;
+import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.StreamsBuilder;
+import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.*;
+import org.apache.kafka.streams.state.HostInfo;
 import org.apache.kafka.streams.state.KeyValueStore;
+import querying.ld.QueryingService;
+import util.AppConfig;
+import util.TSExtractor;
+import util.geoindex.QuadHash;
+import util.serdes.JsonPOJODeserializer;
+import util.serdes.JsonPOJOSerializer;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -50,8 +53,14 @@ import java.util.concurrent.CountDownLatch;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.apache.commons.lang3.time.DateUtils.truncate;
 
+/**
+ * This is the entry point of a Kafka Streams application that continuously computes data summaries on the a stream of
+ * air quality readings coming from the Bel-Air CoT setup in Antwerp, following the mechanism described in <a href='https://www.mdpi.com/1424-8220/20/9/2737'>this paper</a>.
+ *
+ * The application supports a number of geo-indexing methods (geohash, quad-tiling, and Slippy tiles) and time
+ * resolutions (per-minute, -hour, -day, and -month bins).
+ */
 public class IngestStream {
 
     public static final List<String> METRICS = AppConfig.SUPPORTED_METRICS;

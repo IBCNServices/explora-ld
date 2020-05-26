@@ -76,8 +76,8 @@ public class JSONLDDocumentBuilder {
         hydraSearch.put("hydra:mapping", this.buildHydraMapping());
         dcIsPartOf.put("@id", id);
         dcIsPartOf.put("@type", "hydra:Collection");
-        dcIsPartOf.put("dcterms:license", "");
-        dcIsPartOf.put("dcterms:right", "");
+//        dcIsPartOf.put("dcterms:license", "");
+//        dcIsPartOf.put("dcterms:right", "");
         dcIsPartOf.put("hydra:search", hydraSearch);
         dcTermsInfoObj.put("dcterms:isPartOf", dcIsPartOf);
 
