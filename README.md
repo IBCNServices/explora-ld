@@ -58,7 +58,7 @@ Where `x` and `y` are the coordinates of a certain tile and `page` is an ISO dat
 For example:
 
 ```
-http://localhost:7070/data/14/8392/5467?page=2020-05-26T00:00:00.000Z&aggrMethod=median&aggrPeriod=hour
+http://localhost:7070/data/14/8392/5467?page=2020-05-26T00:00:00.000Z&aggrMethod=avg&aggrPeriod=hour
 ```
 
 
