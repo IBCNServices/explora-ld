@@ -16,7 +16,7 @@ This is a Kafka Streams implementation of the [EXPLORA framework](https://www.md
 
 ## Architecture
 
-![Explora-LD](./explora-ld-arch.pdf)
+![Explora-LD](./explora-ld-arch.png)
 
 ## Requirements
 
