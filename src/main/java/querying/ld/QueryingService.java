@@ -129,30 +129,31 @@ public class QueryingService {
         long pageLong = Instant.parse(page).toEpochMilli();
         if (metricId.isEmpty()) { // response to client request (not to a request from another stream processor)
             JSONLDBuilder builder = new JSONLDBuilder();
-            Map<String, HashMap> filteredPayload = new LinkedHashMap<>();
-//            System.out.println("[prepareResponse] Incoming payload: " + payload);
-//            System.out.println("[prepareResponse] Requested aggregate: " + aggregate);
-            for (Map.Entry<String, Aggregate> entry : payload.entrySet()) {
-//                System.out.println("[prepareResponse] Inside for loop ...");
-                String key = entry.getKey();
-                Aggregate value = entry.getValue();
-                try {
-//                    System.out.println("[prepareResponse] Inside try-catch ...");
-                    HashMap<String, Object> aggrMap = new HashMap<>();
-                    aggrMap.put("value", value.getClass().getField(aggregate).get(value));
-                    aggrMap.put("sensors", value.sensed_by);
-                    filteredPayload.put(key, aggrMap);
-//                    System.out.println("[prepareResponse] Filtered payload: " + filteredPayload);
-//                        finalResults.put(key, (Double) value.getClass().getField(aggregate).get(value));
-                } catch (NoSuchFieldException | IllegalAccessException ex) {
-                    ex.printStackTrace();
-                    Response errorResp = Response.status(Response.Status.BAD_REQUEST)
-                            .entity(new ErrorMessage(ex.getMessage(), 400))
-                            .build();
-                    throw new WebApplicationException(errorResp);
-                }
-            }
-            LinkedHashMap<String, Object> respMap = builder.buildTile(tile, pageLong, filteredPayload, aggregate, aggrPeriod);
+//            Map<String, HashMap> filteredPayload = new LinkedHashMap<>();
+////            System.out.println("[prepareResponse] Incoming payload: " + payload);
+////            System.out.println("[prepareResponse] Requested aggregate: " + aggregate);
+//            for (Map.Entry<String, Aggregate> entry : payload.entrySet()) {
+////                System.out.println("[prepareResponse] Inside for loop ...");
+//                String key = entry.getKey();
+//                Aggregate value = entry.getValue();
+//                try {
+////                    System.out.println("[prepareResponse] Inside try-catch ...");
+//                    HashMap<String, Object> aggrMap = new HashMap<>();
+//                    aggrMap.put("value", value.getClass().getField(aggregate).get(value));
+//                    aggrMap.put("sensors", value.sensed_by);
+//                    filteredPayload.put(key, aggrMap);
+////                    System.out.println("[prepareResponse] Filtered payload: " + filteredPayload);
+////                        finalResults.put(key, (Double) value.getClass().getField(aggregate).get(value));
+//                } catch (NoSuchFieldException | IllegalAccessException ex) {
+//                    ex.printStackTrace();
+//                    Response errorResp = Response.status(Response.Status.BAD_REQUEST)
+//                            .entity(new ErrorMessage(ex.getMessage(), 400))
+//                            .build();
+//                    throw new WebApplicationException(errorResp);
+//                }
+//            }
+//            LinkedHashMap<String, Object> respMap = builder.buildTile(tile, pageLong, filteredPayload, aggregate, aggrPeriod);
+            LinkedHashMap<String, Object> respMap = builder.buildTile(tile, pageLong, payload, aggregate, aggrPeriod);
             return Response.ok(new GenericEntity<LinkedHashMap<String, Object>>(respMap){}).build();
 ////                Map<Long, Double> finalResults = new TreeMap<>();
 //            List data = new ArrayList();

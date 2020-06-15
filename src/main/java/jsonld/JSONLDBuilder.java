@@ -6,7 +6,7 @@ import util.geoindex.Tile;
 import java.util.*;
 
 public class JSONLDBuilder {
-    public  LinkedHashMap<String, Object> buildTile(Tile tile, Long page, Map<String, HashMap> results,
+    public  LinkedHashMap<String, Object> buildTile(Tile tile, Long page, Map<String, Aggregate> results,
                                              String aggrMethod, String aggrPeriod) {
         JSONLDDataBuilder dataBuilder = new JSONLDDataBuilder();
         JSONLDDocumentBuilder documentBuilder = new JSONLDDocumentBuilder();
