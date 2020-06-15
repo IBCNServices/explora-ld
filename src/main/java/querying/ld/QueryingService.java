@@ -153,8 +153,16 @@ public class QueryingService {
 //                }
 //            }
 //            LinkedHashMap<String, Object> respMap = builder.buildTile(tile, pageLong, filteredPayload, aggregate, aggrPeriod);
-            LinkedHashMap<String, Object> respMap = builder.buildTile(tile, pageLong, payload, aggregate, aggrPeriod);
-            return Response.ok(new GenericEntity<LinkedHashMap<String, Object>>(respMap){}).build();
+            try {
+                LinkedHashMap<String, Object> respMap = builder.buildTile(tile, pageLong, payload, aggregate, aggrPeriod);
+                return Response.ok(new GenericEntity<LinkedHashMap<String, Object>>(respMap){}).build();
+            } catch (NoSuchFieldException | IllegalAccessException ex) {
+                ex.printStackTrace();
+                Response errorResp = Response.status(Response.Status.BAD_REQUEST)
+                        .entity(new ErrorMessage(ex.getMessage(), 400))
+                        .build();
+                throw new WebApplicationException(errorResp);
+            }
 ////                Map<Long, Double> finalResults = new TreeMap<>();
 //            List data = new ArrayList();
 ////            System.out.println("[prepareResponse] Incoming payload: " + payload);

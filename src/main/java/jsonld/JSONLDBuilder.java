@@ -7,7 +7,7 @@ import java.util.*;
 
 public class JSONLDBuilder {
     public  LinkedHashMap<String, Object> buildTile(Tile tile, Long page, Map<String, Aggregate> results,
-                                             String aggrMethod, String aggrPeriod) {
+                                             String aggrMethod, String aggrPeriod) throws NoSuchFieldException, IllegalAccessException {
         JSONLDDataBuilder dataBuilder = new JSONLDDataBuilder();
         JSONLDDocumentBuilder documentBuilder = new JSONLDDocumentBuilder();
         LinkedHashMap<String, Object> blob = documentBuilder.buildTile(tile, page, aggrMethod, aggrPeriod);
