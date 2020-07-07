@@ -15,8 +15,8 @@ data:
   LD_FRAGMENT_RES: 'hour'
   #REST_ENDPOINT_HOSTNAME: '0.0.0.0'
   REST_ENDPOINT_PORT: '7070'
-  ENTRYPOINT_HOST: '10.10.137.122'
-  ENTRYPOINT_PORT: '30070'
+  ENTRYPOINT_HOST: 'localhost'
+  ENTRYPOINT_PORT: '5000'
 
 
 ---
@@ -56,6 +56,8 @@ spec:
         ports:
         - containerPort: 7070
           name: explora-ld
+      nodeSelector:
+        explora-env: dev
       restartPolicy: Always
       imagePullSecrets:
         - name: regcred

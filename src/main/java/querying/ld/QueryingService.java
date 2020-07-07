@@ -206,6 +206,7 @@ public class QueryingService {
         final ServletHolder holder = new ServletHolder(sc);
         context.addServlet(holder, "/*");
         holder.setInitParameter("jersey.config.server.provider.classnames", QueryingService.class.getCanonicalName());
+        holder.setInitParameter("cacheControl","public,max-age=31536000");
         FilterHolder filterHolder = context.addFilter(CrossOriginFilter.class, "/*", EnumSet.of(DispatcherType.REQUEST));
         filterHolder.setInitParameter("allowedOrigins", "*");
 

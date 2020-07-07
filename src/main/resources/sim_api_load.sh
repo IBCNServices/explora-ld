@@ -1,5 +1,5 @@
-seq 1 200 | xargs -n1 -P10  sh -c 'START=$(date +%s.%N); \
-curl "http://10.10.139.5:30070/api/airquality/airquality.no2::number/aggregate/avg/snapshot?ts=1567295940000&src=tiles&res=min&gh_precision=6&bbox=51.311646,4.306641,51.168823,4.504395"; \
+seq 1 4096 | xargs -n1 -P1024  sh -c 'START=$(date +%s.%N); \
+curl "http://10.10.139.5:30170/api/airquality/airquality.no2::number/aggregate/avg/history?from=1533081600000&to=1533686400000&gh_precision=14&res=hour&src=tiles&geohashes=12020213023022,12020213023023,12020213023200,12020213023201,12020213023210,12020213022313,12020213023202,12020213023203,12020213023212,12020213022331,12020213023220,12020213023221,12020213023230,12020213023222,12020213023223"; \
 END=$(date +%s.%N); \
 DIFF=$(echo "$END - $START" | bc); \
-echo $DIFF >> parallel_exec_time.log'
+echo $DIFF >> parallel_exec_time_p1024.log'
