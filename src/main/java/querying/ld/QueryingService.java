@@ -93,10 +93,14 @@ public class QueryingService {
         }
 
         Instant pageInstant = Instant.parse(page);
+        int pageHours = pageInstant.atZone(ZoneOffset.UTC).getHour();
         int pageMins = pageInstant.atZone(ZoneOffset.UTC).getMinute();
         int pageSecs = pageInstant.atZone(ZoneOffset.UTC).getSecond();
 
-        if (pageMins > 0 || pageSecs > 0) {
+        boolean truncateCondition = this.lDFragmentResolution.equals("hour") ?  (pageMins > 0 || pageSecs > 0) :
+                (pageHours > 0 || pageMins > 0 || pageSecs > 0);
+
+        if (truncateCondition) {
             Date pageDate = new Date(controller.truncateTS(pageInstant.toEpochMilli(), this.lDFragmentResolution));
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
             sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
