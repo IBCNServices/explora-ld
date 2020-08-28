@@ -73,7 +73,8 @@ public class JSONLDDocumentBuilder {
         hydraSearch.put("@type", "hydraIriTemplate");
         hydraSearch.put("hydra:template", "http://" + System.getenv("ENTRYPOINT_HOST") + ":" + System.getenv("ENTRYPOINT_PORT") + "/data/{z}/{x}/{y}{?page,aggrMethod,aggrPeriod}");
         hydraSearch.put("hydra:variableRepresentation", "hydra:BasicRepresentation");
-        hydraSearch.put("hydra:mapping", this.buildHydraMapping());
+//        hydraSearch.put("hydra:mapping", this.buildHydraMapping());
+        hydraSearch.put("hydra:mapping", JSONLDConfig.HYDRA_MAPPING);
         dcIsPartOf.put("@id", id);
         dcIsPartOf.put("@type", "hydra:Collection");
 //        dcIsPartOf.put("dcterms:license", "");
@@ -84,47 +85,54 @@ public class JSONLDDocumentBuilder {
         return dcTermsInfoObj;
     }
 
-    private List<LinkedHashMap<String, Object>> buildHydraMapping() {
-        List<LinkedHashMap<String, Object>> result = new ArrayList<>();
-
-        LinkedHashMap<String, Object> xMapping = new LinkedHashMap<>();
-        LinkedHashMap<String, Object> yMapping = new LinkedHashMap<>();
-        LinkedHashMap<String, Object> pageMapping = new LinkedHashMap<>();
-        LinkedHashMap<String, Object> aggrMethodMapping = new LinkedHashMap<>();
-        LinkedHashMap<String, Object> aggrPeriodMapping = new LinkedHashMap<>();
-
-        xMapping.put("@type", "hydra:IriTemplateMapping");
-        xMapping.put("hydra:variable", "x");
-        xMapping.put("hydra:property", "tiles:longitudeTile");
-        xMapping.put("hydra:required", true);
-
-        yMapping.put("@type", "hydra:IriTemplateMapping");
-        yMapping.put("hydra:variable", "y");
-        yMapping.put("hydra:property", "tiles:latitudeTile");
-        yMapping.put("hydra:required", true);
-
-        pageMapping.put("@type", "hydra:IriTemplateMapping");
-        pageMapping.put("hydra:variable", "page");
-        pageMapping.put("hydra:property", "dcterms:date");
-        pageMapping.put("hydra:required", false);
-
-        aggrMethodMapping.put("@type", "hydra:IriTemplateMapping");
-        aggrMethodMapping.put("hydra:variable", "aggrMethod");
-        aggrMethodMapping.put("hydra:property", "dcterms:accrualMethod");
-        aggrMethodMapping.put("hydra:required", true);
-
-        aggrPeriodMapping.put("@type", "hydra:IriTemplateMapping");
-        aggrPeriodMapping.put("hydra:variable", "aggrPeriod");
-        aggrPeriodMapping.put("hydra:property", "dcterms:accrualPeriodicity");
-        aggrPeriodMapping.put("hydra:required", true);
-
-        result.add(xMapping);
-        result.add(yMapping);
-        result.add(pageMapping);
-        result.add(aggrMethodMapping);
-        result.add(aggrPeriodMapping);
-
-        return result;
-    }
+//    private List<LinkedHashMap<String, Object>> buildHydraMapping() {
+//        List<LinkedHashMap<String, Object>> result = new ArrayList<>();
+//
+//        LinkedHashMap<String, Object> xMapping = new LinkedHashMap<>();
+//        LinkedHashMap<String, Object> yMapping = new LinkedHashMap<>();
+//        LinkedHashMap<String, Object> zMapping = new LinkedHashMap<>();
+//        LinkedHashMap<String, Object> pageMapping = new LinkedHashMap<>();
+//        LinkedHashMap<String, Object> aggrMethodMapping = new LinkedHashMap<>();
+//        LinkedHashMap<String, Object> aggrPeriodMapping = new LinkedHashMap<>();
+//
+//        xMapping.put("@type", "hydra:IriTemplateMapping");
+//        xMapping.put("hydra:variable", "x");
+//        xMapping.put("hydra:property", "tiles:longitudeTile");
+//        xMapping.put("hydra:required", true);
+//
+//        yMapping.put("@type", "hydra:IriTemplateMapping");
+//        yMapping.put("hydra:variable", "y");
+//        yMapping.put("hydra:property", "tiles:latitudeTile");
+//        yMapping.put("hydra:required", true);
+//
+//        zMapping.put("@type", "hydra:IriTemplateMapping");
+//        zMapping.put("hydra:variable", "z");
+//        zMapping.put("hydra:property", "tiles:zoomTile");
+//        zMapping.put("hydra:required", true);
+//
+//        pageMapping.put("@type", "hydra:IriTemplateMapping");
+//        pageMapping.put("hydra:variable", "page");
+//        pageMapping.put("hydra:property", "dcterms:date");
+//        pageMapping.put("hydra:required", false);
+//
+//        aggrMethodMapping.put("@type", "hydra:IriTemplateMapping");
+//        aggrMethodMapping.put("hydra:variable", "aggrMethod");
+//        aggrMethodMapping.put("hydra:property", "dcterms:accrualMethod");
+//        aggrMethodMapping.put("hydra:required", true);
+//
+//        aggrPeriodMapping.put("@type", "hydra:IriTemplateMapping");
+//        aggrPeriodMapping.put("hydra:variable", "aggrPeriod");
+//        aggrPeriodMapping.put("hydra:property", "dcterms:accrualPeriodicity");
+//        aggrPeriodMapping.put("hydra:required", true);
+//
+//        result.add(xMapping);
+//        result.add(yMapping);
+//        result.add(zMapping);
+//        result.add(pageMapping);
+//        result.add(aggrMethodMapping);
+//        result.add(aggrPeriodMapping);
+//
+//        return result;
+//    }
 
 }
