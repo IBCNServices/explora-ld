@@ -6,10 +6,11 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class JSONLDDataBuilder {
-    public List<LinkedHashMap<String, Object>> build(Map<String, Aggregate> results, Long page, String aggrMethod, String aggrPeriod) throws NoSuchFieldException, IllegalAccessException {
+    public List<LinkedHashMap<String, Object>> build(List<LinkedHashMap<String, Object>> results, Long page, String aggrMethod, String aggrPeriod) throws NoSuchFieldException, IllegalAccessException {
         ArrayList<LinkedHashMap<String, Object>> graph = new ArrayList<>();
         graph.add(this.buildFeatureOfInterest());
-        graph.addAll(this.buildAggregateObservations(results, page, aggrMethod, aggrPeriod));
+//        graph.addAll(this.buildAggregateObservations(results, page, aggrMethod, aggrPeriod));
+        graph.addAll(results);
         return graph;
     }
 

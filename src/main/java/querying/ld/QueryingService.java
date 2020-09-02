@@ -110,7 +110,8 @@ public class QueryingService {
         }
 
 
-        TreeMap<String, Aggregate> results = new TreeMap<>();
+//        TreeMap<String, Aggregate> results = new TreeMap<>();
+        List<LinkedHashMap<String, Object>> results = new ArrayList<>();
         Tile qTile = new Tile(x , y, z);
         if (!(aggrPeriod.isEmpty()) && AppConfig.SUPPORTED_RESOLUTIONS.contains(aggrPeriod)){
 //            System.out.println(String.format("[getAirQualityHistory] Querying Explora: %1$s/%2$s/%3$s=%4$s, %5$s, %6$s, %7$s...", z, x, y, searchKey, page, aggrMethod, aggrPeriod));
@@ -129,34 +130,10 @@ public class QueryingService {
         return prepareResponse(aggrMethod, aggrPeriod, results, qTile, page, metricId);
     }
 
-    private Response prepareResponse(String aggregate, String aggrPeriod,  TreeMap<String, Aggregate> payload, Tile tile, String page, String metricId){
+    private Response prepareResponse(String aggregate, String aggrPeriod,  List<LinkedHashMap<String, Object>> payload, Tile tile, String page, String metricId){
         long pageLong = Instant.parse(page).toEpochMilli();
         if (metricId.isEmpty()) { // response to client request (not to a request from another stream processor)
             JSONLDBuilder builder = new JSONLDBuilder();
-//            Map<String, HashMap> filteredPayload = new LinkedHashMap<>();
-////            System.out.println("[prepareResponse] Incoming payload: " + payload);
-////            System.out.println("[prepareResponse] Requested aggregate: " + aggregate);
-//            for (Map.Entry<String, Aggregate> entry : payload.entrySet()) {
-////                System.out.println("[prepareResponse] Inside for loop ...");
-//                String key = entry.getKey();
-//                Aggregate value = entry.getValue();
-//                try {
-////                    System.out.println("[prepareResponse] Inside try-catch ...");
-//                    HashMap<String, Object> aggrMap = new HashMap<>();
-//                    aggrMap.put("value", value.getClass().getField(aggregate).get(value));
-//                    aggrMap.put("sensors", value.sensed_by);
-//                    filteredPayload.put(key, aggrMap);
-////                    System.out.println("[prepareResponse] Filtered payload: " + filteredPayload);
-////                        finalResults.put(key, (Double) value.getClass().getField(aggregate).get(value));
-//                } catch (NoSuchFieldException | IllegalAccessException ex) {
-//                    ex.printStackTrace();
-//                    Response errorResp = Response.status(Response.Status.BAD_REQUEST)
-//                            .entity(new ErrorMessage(ex.getMessage(), 400))
-//                            .build();
-//                    throw new WebApplicationException(errorResp);
-//                }
-//            }
-//            LinkedHashMap<String, Object> respMap = builder.buildTile(tile, pageLong, filteredPayload, aggregate, aggrPeriod);
             try {
                 LinkedHashMap<String, Object> respMap = builder.buildTile(tile, pageLong, payload, aggregate, aggrPeriod);
                 return Response.ok(new GenericEntity<LinkedHashMap<String, Object>>(respMap){}).build();
@@ -167,28 +144,9 @@ public class QueryingService {
                         .build();
                 throw new WebApplicationException(errorResp);
             }
-////                Map<Long, Double> finalResults = new TreeMap<>();
-//            List data = new ArrayList();
-////            System.out.println("[prepareResponse] Incoming payload: " + payload);
-//            payload.forEach((key, value) -> {
-//                try {
-//                    data.add(Arrays.asList(key, value.getClass().getField(aggregate).get(value)));
-////                        finalResults.put(key, (Double) value.getClass().getField(aggregate).get(value));
-//                } catch (NoSuchFieldException | IllegalAccessException ex) {
-//                    ex.printStackTrace();
-//                    Response errorResp = Response.status(Response.Status.BAD_REQUEST)
-//                            .entity(new ErrorMessage(ex.getMessage(), 400))
-//                            .build();
-//                    throw new WebApplicationException(errorResp);
-//                }
-//            });
-////            System.out.println("[prepareResponse] Outgoing data: " + data);
-//            Message respMessage = new Message(columns, data, metadata);
-//            return Response.ok(respMessage).build();
+
         }
-//                System.out.println("[prepareResponse] sending results");
-//                System.out.println(results);
-        return Response.ok(new GenericEntity<Map<String, Aggregate>>(payload){}).build();
+        return Response.ok(new GenericEntity<List<LinkedHashMap<String, Object>>>(payload){}).build();
     }
 
     /**
