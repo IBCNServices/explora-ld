@@ -137,7 +137,7 @@ public class IngestStream {
         resultJSON.put("resultTime", getCurrOrNextDate(Long.valueOf(timestamp), false, aggrPeriod));
         resultJSON.put("phenomenonTime", phenomenonTime);
         resultJSON.put("observedProperty", JSONLDConfig.BASE_URL + metricId);
-        resultJSON.put("madeBySensor", convertSensors((HashSet<String>) value.getClass().getField("sensed_by").get(value)));
+        resultJSON.put("madeBySensor", ((HashSet<String>) value.getClass().getField("sensed_by").get(value)).stream().map(s -> JSONLDConfig.BASE_URL + s).collect(Collectors.toList()));
         resultJSON.put("usedProcedure", JSONLDConfig.BASE_URL + "id/" + aggrMethod);
         resultJSON.put("hasFeatureOfInterest", JSONLDConfig.BASE_URL + JSONLDConfig.FEATURE_OF_INTEREST);
         resultJSON.put("Output", outputJSON);
@@ -197,13 +197,13 @@ public class IngestStream {
         return sdf.format(refPage);
     }
 
-    private static List<String> convertSensors(HashSet<String> sensors) {
-        List<String> sensorList = new ArrayList<>();
-        for (String sensorId : sensors) {
-            sensorList.add(JSONLDConfig.BASE_URL + sensorId);
-        }
-        return sensorList;
-    }
+//    private static List<String> convertSensors(HashSet<String> sensors) {
+//        List<String> sensorList = new ArrayList<>();
+//        for (String sensorId : sensors) {
+//            sensorList.add(JSONLDConfig.BASE_URL + sensorId);
+//        }
+//        return sensorList;
+//    }
 
     public static void main(String[] args) throws Exception {
         List<String> aQMetrics = null;
@@ -333,6 +333,7 @@ public class IngestStream {
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         props.put(ConsumerConfig.FETCH_MAX_BYTES_CONFIG, 1024 * 1024 * 100);
         props.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, 1024 * 1024 * 100);
+        props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "lz4");
         return props;
     }
 
