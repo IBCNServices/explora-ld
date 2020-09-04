@@ -398,7 +398,8 @@ public class IngestStream {
                                 () -> new Aggregate(0L, 0.0, 0.0, new HashSet<>()),
                                 (key, value, aggregate) -> airQReadingAggregator(key, value, aggregate),
                                 Materialized.<String, Aggregate, WindowStore<Bytes, byte[]>>as("view-" + aQMetricId.replace("::", ".") + "-gh" + precision + "-min-aux").withValueSerde(aggSerde).withCachingEnabled()
-                        ).toStream().map((key, value) -> KeyValue.pair(key.key() + "#" + toFormattedTimestamp(truncateTS(key.window().start(), AppConfig.LD_FRAGMENT_RES), ZoneId.of("UTC")), new AggregateValueTuple(
+//                        ).toStream().map((key, value) -> KeyValue.pair(key.key() + "#" + toFormattedTimestamp(truncateTS(key.window().start(), AppConfig.LD_FRAGMENT_RES), ZoneId.of("UTC")), new AggregateValueTuple(
+                        ).toStream().map((key, value) -> KeyValue.pair(key.key() + "#" + toFormattedTimestamp(truncateTS(key.window().start(), "hour"), ZoneId.of("UTC")), new AggregateValueTuple(
                                 key.key() + "#" + key.window().start(),
                                 key.key(),
                                 key.window().start(),

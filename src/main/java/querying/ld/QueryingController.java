@@ -49,29 +49,42 @@ public class QueryingController {
 
     public List<LinkedHashMap<String, Object>> solveSpatialQuery(Tile quadTile, String page, String aggrMethod, String aggrPeriod, String metricId) {
         System.out.println("[solveSpatialQuery] method call");
-        if(!metricId.isEmpty()) {
-            String viewStoreName = "view-" + metricId.replace("::", ".") + "-gh" + quadTile.getZoom() + "-" + aggrPeriod;
-            return getLocalAggregates4MetricAndPage(viewStoreName, quadTile, page, aggrMethod, aggrPeriod, metricId);
+        if (AppConfig.LD_FRAGMENT_RES.equals("day") && aggrPeriod.equals("min")){
+            if(!metricId.isEmpty()) {
+                String viewStoreName = "view-" + metricId.replace("::", ".") + "-gh" + quadTile.getZoom() + "-" + aggrPeriod;
+                return getLocalAggregates4MetricAndRange(viewStoreName, quadTile, page, aggrMethod, aggrPeriod, metricId);
+            } else {
+                TSFragmentsAggregator aggCollect = AppConfig.SUPPORTED_METRICS.stream().map(metric -> {
+                    final String store = "view-" + metric.replace("::", ".") + "-gh" + quadTile.getZoom() + "-" + aggrPeriod;
+                    return fetchAggregate4MetricAndRange(store, quadTile, page, aggrMethod, aggrPeriod, metric);
+                }).collect(TSFragmentsAggregator::new, TSFragmentsAggregator::accept, TSFragmentsAggregator::combine);
+                return aggCollect.getAggregateList();
+            }
         } else {
-            TSFragmentsAggregator aggCollect = AppConfig.SUPPORTED_METRICS.stream().map(metric -> {
-                final String store = "view-" + metric.replace("::", ".") + "-gh" + quadTile.getZoom() + "-" + aggrPeriod;
-                String quadKey = QuadHash.getQuadKey(quadTile);
-                long ts = Instant.parse(page).toEpochMilli();
-                String searchKey = quadKey + "#" + toFormattedTimestamp(ts, ZoneId.of("UTC"));
+            if (!metricId.isEmpty()) {
+                String viewStoreName = "view-" + metricId.replace("::", ".") + "-gh" + quadTile.getZoom() + "-" + aggrPeriod;
+                return getLocalAggregates4MetricAndPage(viewStoreName, quadTile, page, aggrMethod, aggrPeriod, metricId);
+            } else {
+                TSFragmentsAggregator aggCollect = AppConfig.SUPPORTED_METRICS.stream().map(metric -> {
+                    final String store = "view-" + metric.replace("::", ".") + "-gh" + quadTile.getZoom() + "-" + aggrPeriod;
+                    String quadKey = QuadHash.getQuadKey(quadTile);
+                    long ts = Instant.parse(page).toEpochMilli();
+                    String searchKey = quadKey + "#" + toFormattedTimestamp(ts, ZoneId.of("UTC"));
 //                System.out.println("[solveSpatialQuery] metricId=" + metric + " ts=" + ts);
 //                System.out.println("[solveSpatialQuery] searchKey=" + searchKey);
-                final HostStoreInfo host = metadataService.streamsMetadataForStoreAndKey(store, searchKey, new StringSerializer());
-                if (!thisHost(host)) {
-                    return fetchAggregate4MetricAndPage(host, store, quadTile, page, aggrMethod, aggrPeriod, metric);
-                } else {
-                    return getLocalAggregates4MetricAndPage(store, quadTile, page, aggrMethod, aggrPeriod, metricId);
-                }
-            }).collect(TSFragmentsAggregator::new, TSFragmentsAggregator::accept, TSFragmentsAggregator::combine);
-            return aggCollect.getAggregateList();
+                    final HostStoreInfo host = metadataService.streamsMetadataForStoreAndKey(store, searchKey, new StringSerializer());
+                    if (!thisHost(host)) {
+                        return fetchAggregate4MetricAndPage(host, quadTile, page, aggrMethod, aggrPeriod, metric);
+                    } else {
+                        return getLocalAggregates4MetricAndPage(store, quadTile, page, aggrMethod, aggrPeriod, metricId);
+                    }
+                }).collect(TSFragmentsAggregator::new, TSFragmentsAggregator::accept, TSFragmentsAggregator::combine);
+                return aggCollect.getAggregateList();
+            }
         }
     }
 
-    public List<LinkedHashMap<String, Object>> fetchAggregate4MetricAndPage(HostStoreInfo host, String storeName, Tile quadTile, String page, String aggrMethod, String aggrPeriod, String metricId) {
+    public List<LinkedHashMap<String, Object>> fetchAggregate4MetricAndPage(HostStoreInfo host, Tile quadTile, String page, String aggrMethod, String aggrPeriod, String metricId) {
         try {
                 System.out.println(String.format("[fetchAggregate4MetricAndPage] Forwarding request to %s:%s", host.getHost(), host.getPort()));
                 return client.target(String.format("http://%s:%d/data/%s/%s/%s",
@@ -115,18 +128,80 @@ public class QueryingController {
         }
     }
 
-//    public static long getPeriodInterval(String timePeriod) {
-//        switch (timePeriod) {
-//            case "min":
-//                return 60000L;
-//            case "day":
-//                return 86400000L;
-//            case "month":
-//                return 2592000000L;
-//            default:
-//                return 3600000L;
-//        }
-//    }
+    public List<LinkedHashMap<String, Object>> getLocalAggregates4MetricAndRange(String storeName, Tile quadTile, String page, String aggrMethod, String aggrPeriod, String metricId) {
+        System.out.println("[getLocalAggregates4MetricAndRange] look in the local store for metric: " + metricId + " (" + storeName + ")");
+        final ReadOnlyKeyValueStore<String, TSFragmentData> viewStore = streams.store(storeName,
+                QueryableStoreTypes.keyValueStore());
+        String quadKey = QuadHash.getQuadKey(quadTile);
+        final long fromTimestamp = Instant.parse(page).toEpochMilli();
+        final long toTimestamp = fromTimestamp + getPeriodInterval(AppConfig.LD_FRAGMENT_RES) - getPeriodInterval(aggrPeriod); // to exclude next fragment from the look-up
+        final String fromK = quadKey + "#" + toFormattedTimestamp(fromTimestamp, ZoneOffset.UTC);
+        final String toK = quadKey + "#" + toFormattedTimestamp(toTimestamp, ZoneOffset.UTC);
+//        System.out.println("fromK=" + fromK);
+//        System.out.println("toK=" + toK);
+        List<LinkedHashMap<String, Object>> aggregateReadings = new LinkedList<>();
+        KeyValueIterator<String, TSFragmentData> iterator =  viewStore.range(fromK, toK);
+        while (iterator.hasNext()) {
+            KeyValue<String, TSFragmentData> aggFromStore = iterator.next();
+//            System.out.println("Aggregate for " + aggFromStore.key + ": " + aggFromStore.value);
+            aggregateReadings.addAll(aggFromStore.value.graph.values());
+        }
+        iterator.close();
+        return aggregateReadings;
+    }
+
+    public List<LinkedHashMap<String, Object>> fetchAggregate4MetricAndRange(String storeName, Tile quadTile, String page, String aggrMethod, String aggrPeriod, String metricId) {
+        List<HostStoreInfo> hosts = metadataService.streamsMetadataForStore(storeName);
+        TSFragmentsAggregator aggCollect = hosts.stream()
+                .map(host -> {
+                    if (!thisHost(host)) {
+                        try {
+                            System.out.println(String.format("[fetchAggregate4MetricAndRange] Forwarding request to %s:%s", host.getHost(), host.getPort()));
+                            return client.target(String.format("http://%s:%d/data/%s/%s/%s",
+                                    host.getHost(),
+                                    host.getPort(),
+                                    quadTile.getZoom(),
+                                    quadTile.getX(),
+                                    quadTile.getY()))
+                                    .queryParam("page", page)
+                                    .queryParam("aggrMethod", aggrMethod)
+                                    .queryParam("aggrPeriod", aggrPeriod)
+                                    .queryParam("metricId", metricId)
+                                    .request(MediaType.APPLICATION_JSON_TYPE)
+                                    .get(new GenericType<List<LinkedHashMap<String, Object>>>() {});
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            Throwable rootCause = ExceptionUtils.getRootCause(e);
+                            rootCause.printStackTrace();
+                            Response errorResp = Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                                    .entity(new ErrorMessage(rootCause.getMessage(), 500))
+                                    .build();
+                            throw new WebApplicationException(errorResp);
+                        }
+                    } else {
+                        // look in the local store
+                        return getLocalAggregates4MetricAndRange(storeName, quadTile, page, aggrMethod, aggrPeriod, metricId);
+                    }
+                })
+                .collect(TSFragmentsAggregator::new, TSFragmentsAggregator::accept, TSFragmentsAggregator::combine);
+        return aggCollect.getAggregateList();
+    }
+
+
+
+
+    public static long getPeriodInterval(String timePeriod) {
+        switch (timePeriod) {
+            case "min":
+                return 60000L;
+            case "day":
+                return 86400000L;
+            case "month":
+                return 2592000000L;
+            default:
+                return 3600000L;
+        }
+    }
 
     public long truncateTS(long timestamp, String resolution) {
         try{
